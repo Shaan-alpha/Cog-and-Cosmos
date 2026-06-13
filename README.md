@@ -57,7 +57,7 @@ a **Global Skill Tree**, per-stage auto-buyers, a Statistics panel, and an insta
 | Synthesized Web-Audio SFX + mute | ✅ |
 | **Global Skill Tree (spend Fortune ★, 9-node tiered tree)** | ✅ live |
 | **Installable PWA + full offline play (service worker)** | ✅ live |
-| **SPA multi-view (Stages / Skills / Stats / Settings) — one persistent runtime** | ✅ live |
+| **SPA multi-view (Stages / Skills / Ascension / Transcendence / Stats / Settings) — one persistent runtime** | ✅ live |
 | "Brass & Ink" production UI theme | ✅ |
 | **Time / Multiverse Local Upgrades (Epoch / Convergence trees)** | ✅ live |
 | **Ascension meta-layer (deep reset → Legacy Points) + LP meta tree** | ✅ live |

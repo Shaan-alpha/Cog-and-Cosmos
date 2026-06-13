@@ -9,15 +9,16 @@ architecture and conventions. The design bible is **[MASTER_PLAN.md](./MASTER_PL
 **Cog & Cosmos — The Fortune Engine** is a pixel-art idle game: Svelte 5 + TypeScript + PixiJS v8,
 with `break_eternity.js` for big numbers and compressed IndexedDB saves. Free tools only.
 
-**Current state (Phase 2, in progress):** all eight live interdependent stages **Village → Farm → Mine →
+**Current state (Phase 3, in progress):** all eight live interdependent stages **Village → Farm → Mine →
 Factory → Magic → Space → Time → Multiverse** (each feeds the next via compounding cross-stage bindings;
 Magic enchants, Space input-chains, Time warp-tick bursts, and Multiverse duplication/Convergence are live),
 the **Fortune Engine** (mints ★), a
-**Global Skill Tree** (spend ★) + per-stage local upgrade trees, prestige-gated auto-buyers, a Statistics
-panel, offline progress + autosave, synthesized SFX. Shipped as an **installable PWA** (offline-capable)
-and an **SPA** (one persistent runtime; a Stages/Skills/Ascension/Stats/Settings view switch, never a page
-reload). All 8 stages plus the **Ascension** meta-layer (deep reset → Legacy Points + LP tree) are live; the
-**Transcendence (Æ)** and **Reality Reset (Ω)** meta layers are still roadmap.
+**Global Skill Tree** (spend ★) + per-stage local upgrade trees, prestige-gated auto-buyers (cheapest +
+smart-priority modes), a Statistics panel + an **Achievements** system, offline progress + autosave,
+synthesized SFX. Shipped as an **installable PWA** (offline-capable) and an **SPA** (one persistent runtime;
+a Stages/Skills/Ascension/Transcendence/Stats/Settings view switch, never a page reload). The **Ascension**
+(deep reset → Legacy Points + LP tree) and **Transcendence** (deeper reset → Aether Æ + Æ tree) meta-layers
+are both live; only the **Reality Reset (Ω)** meta layer is still roadmap.
 
 **Architecture is deliberate — don't undo:** SPA (not MPA) because the game is a continuous loop +
 live state; browser-first **PWA** (native Tauri/Capacitor wrappers are post-launch only).

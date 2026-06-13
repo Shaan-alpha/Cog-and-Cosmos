@@ -45,6 +45,14 @@ new test suite and verified unchanged throughout.
 - **Micro-perf & cleanups** — hoisted `effGlobalMult()` out of the per-stage step loop;
   removed a dead `castEnchant` mana guard and an unused import; normalised a skill read to
   `?? 0`; added `.gitattributes` for consistent LF line endings.
+- **Doc-drift sweep.** Re-synced the agent guides with the shipped code — `CLAUDE.md` and
+  `AGENTS.md` still billed the project as *Phase 2* with Transcendence/Achievements "on the
+  roadmap" and the save schema at *v8* (it is **v11**). Refreshed the state summaries, the
+  architecture file-tree (added `achievements.ts`, `skills/transcendence.ts`,
+  `TranscendencePanel.svelte`, `SettingsPanel.svelte`, `OnboardingTooltip.svelte`), the
+  `unlockNotice` → `pushToast()` stacking-toast note, the two-mode (`cheapest`/`priority`)
+  auto-buyer description, and the six-view SPA switch (incl. Transcendence); fixed the README's
+  SPA-view row. Docs-only — no code or behaviour change.
 
 ### Optimized — Phase 3 Codebase Refactoring & Allocation Optimization
 - **Milestone Cache** ([formulas.ts](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/systems/formulas.ts)) — Pre-allocated static Decimal multipliers for all milestone tiers, reducing dynamic object instantiation in `milestoneMult()` to $O(1)$ memory.

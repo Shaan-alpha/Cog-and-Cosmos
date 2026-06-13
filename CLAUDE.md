@@ -12,14 +12,15 @@ Guidance for Claude Code (and other AI agents) working in this repository.
 Eight stages (Village → Multiverse) each run an idle economy and feed each other; a central
 **Fortune Engine** mints the universal currency **Fortune (★)** from every stage's surplus.
 
-Built entirely with **free tools**. Current state: **Phase 2 (in progress)** — all eight live, interdependent
+Built entirely with **free tools**. Current state: **Phase 3 (in progress)** — all eight live, interdependent
 stages (**Village → Farm → Mine → Factory → Magic → Space → Time → Multiverse**), the **Fortune Engine**, a
 **Global Skill Tree** (spend ★) + per-stage local upgrade trees, signature stage twists (Magic enchants, Space
 input-chains, Time warp-tick bursts + Paradox, Multiverse duplication + Convergence collapse), prestige-gated
-auto-buyers, a Statistics panel, the **Ascension** meta-layer (deep reset → **Legacy Points** + an LP tree),
-an installable **PWA**, an **SPA** Stages/Skills/Ascension/Stats/Settings view switch, offline progress,
-autosave, and synthesized SFX. The remaining meta-prestige layers (Transcendence Æ, Reality Reset Ω) are
-still on the roadmap.
+auto-buyers (cheapest + smart-priority modes), a Statistics panel + an **Achievements** system, the
+**Ascension** meta-layer (deep reset → **Legacy Points** + an LP tree) and the **Transcendence** meta-layer
+(deeper reset → **Aether Æ** + an Æ tree), a stacking toast notification bus, an installable **PWA**, an
+**SPA** Stages/Skills/Ascension/Transcendence/Stats/Settings view switch, offline progress, autosave, and
+synthesized SFX. The remaining meta-prestige layer (Reality Reset Ω) is still on the roadmap.
 
 ## Tech stack
 
@@ -109,7 +110,9 @@ src/
 │   │   └── multiverse.ts   Shards/Echoes/Convergence — 6 generators + duplication & Convergence (LIVE)
 │   ├── skills/global.ts    Global Skill Tree node defs (9 nodes, tiered, prereqs)
 │   ├── skills/local.ts     Per-stage local upgrade trees (Magic/Space/Time/Multiverse, prestige-gated)
-│   └── skills/ascension.ts Ascension meta tree (6 nodes, spent in Legacy Points)
+│   ├── skills/ascension.ts Ascension meta tree (6 nodes, spent in Legacy Points)
+│   ├── skills/transcendence.ts Transcendence meta tree (4 nodes, spent in Aether Æ)
+│   └── achievements.ts     20 achievements (17 visible, 3 secret) → compounding global output boosts
 ├── systems/                Pure game core — NO Svelte imports here.
 │   ├── Decimal.ts          break_eternity wrapper. Import Decimal/D/ZERO/ONE/fmt ONLY from here.
 │   ├── formulas.ts         ALL balancing math (pure). Mirrors MASTER_PLAN §17.
@@ -118,12 +121,12 @@ src/
 │   ├── FortuneEngine.ts    mints ★ from stage surpluses; manages 8 slots.
 │   ├── skills.ts           skill cost / prereqs / recomputeUpgrades() (derives globalMult + engineMult)
 │   ├── audio.ts            synthesized Web-Audio SFX (no files): playBuy/playMilestone/playPrestige + mute
-│   └── SaveManager.ts      IndexedDB+localStorage, lz-string, versioned migrate() (currently v8)
+│   └── SaveManager.ts      IndexedDB+localStorage, lz-string, versioned migrate() (currently v11)
 ├── stores/
 │   └── game.svelte.ts      the ONE reactive store + the 20 Hz fixed-step loop. Bridges systems ↔ UI.
 ├── ui/                     Svelte components — render-only, read store accessors.
-│   ├── GameLayout.svelte   shell: masthead, view switch (Stages/Skills/Stats/Settings), dial bar, 3-col deck, unlock toast
-│   ├── StatsPanel.svelte   Statistics view: playtime, ★ totals/rate, global mult, per-stage live table
+│   ├── GameLayout.svelte   shell: masthead, view switch (Stages/Skills/Ascension/Transcendence/Stats/Settings), dial bar, 3-col deck, stacking toast bus
+│   ├── StatsPanel.svelte   Statistics view: playtime, ★ totals/rate, global mult, per-stage live table + 🏆 Achievements sub-tab
 │   ├── StagePanel.svelte   generic per-stage panel (generators, rates, binding badges, prestige); hosts the stage-twist tabs ↓
 │   ├── EnchantsTab.svelte  Magic tab: active enchant slots + casting dashboard
 │   ├── WarpTab.svelte      Time tab: warp-tick caster
@@ -131,6 +134,9 @@ src/
 │   ├── FortuneEnginePanel.svelte   ★ readout + cogs (spin tracks mint rate) + slot board
 │   ├── SkillTree.svelte    Global Skill Tree view (spend ★)
 │   ├── AscensionPanel.svelte   Ascension view: per-stage deep-reset cards + Legacy-Point meta tree
+│   ├── TranscendencePanel.svelte  Transcendence view: Aether Æ altar (deeper reset → Æ) + Æ tree
+│   ├── SettingsPanel.svelte    Settings view: export/import, hard reset, number-format toggle, mute
+│   ├── OnboardingTooltip.svelte    "new system" onboarding hints
 │   └── OfflineSummary.svelte
 └── pixi/PixiCanvas.svelte  decorative scenes (village night · farm day · mine cavern), driven by store reads
 scripts/generate-icons.mjs  pure-Node PNG generator for the PWA icon set → /public
@@ -149,8 +155,8 @@ Svelte re-renders UI → Pixi reads the same state each frame.
   on the live path.) `bindingMultFor()` feeds `StageEconomy.tick()/.rates()`;
   `bindingInfos()` feeds the header badges. Add a stage's synergy = one entry here.
 - **Stage unlock flow** — `checkUnlocks()` (called once per frame). Opens a stage at a lifetime-currency
-  threshold, **seeds** a little starting currency, auto-assigns a Fortune Engine bay, and sets the
-  `unlockNotice` toast. Village starts unlocked; Farm @ 5k lifetime Coins; Mine @ 5k lifetime Grain;
+  threshold, **seeds** a little starting currency, auto-assigns a Fortune Engine bay, and pushes a
+  stacking toast via `pushToast()`. Village starts unlocked; Farm @ 5k lifetime Coins; Mine @ 5k lifetime Grain;
   Factory @ 5k lifetime Ore; Magic @ 1M lifetime Widgets; Space @ 5e5 lifetime Ore + sustained Power;
   Time @ 5M lifetime Stardust once any two stages have ascended; Multiverse @ 10M lifetime Chronons once
   all 7 prior stages are open and Space supplies Alloy.
@@ -160,9 +166,16 @@ Svelte re-renders UI → Pixi reads the same state each frame.
   `recomputeUpgrades()` pass, so both trees are recomputed-safe and never drift.
 - **Ascension layer** — `ascendStage()` deep-resets a stage (generators, currencies, *and* its prestige
   currency/count) and credits the global `legacyPoints` pool via `ascensionGain()` (harsher `^0.33`).
-- **SPA views** — `view` state in `GameLayout` swaps Stages ↔ Skills ↔ Ascension ↔ Stats ↔ Settings, no reload.
+- **Transcendence layer** — `transcend()` is the deeper, global reset: it spends every stage + LP + upgrades
+  to mint **Aether (Æ)** (which passive-mints ★ at +5%/Æ). Its 4-node Æ tree (`buyTranscendenceSkill()`)
+  folds into the *same* `recomputeUpgrades()` pass as the ★ and LP trees. `transcendPreview()` drives the UI.
+- **Achievements** — `checkAchievements()` (once per frame) evaluates the predicates in `data/achievements.ts`;
+  newly-unlocked IDs land in `unlockedAchievements`, compound a small global output multiplier, and push a 🏆 toast.
+- **SPA views** — `view` state in `GameLayout` swaps Stages ↔ Skills ↔ Ascension ↔ Transcendence ↔ Stats ↔ Settings, no reload.
 - **Auto-buyer** — per-stage `autoBuy` flag (unlocks after a stage's first prestige). `stepSim()` calls
-  `economy.autoBuyTick()` once per step to buy the cheapest affordable generator; toggle via `toggleAutoBuy()`.
+  `economy.autoBuyTick()` once per step. Two modes (`autoBuyMode`: `'cheapest' | 'priority'`) — the smart
+  ΔRate/cost **priority** mode unlocks at first Ascension, with a spend reserve and a per-generator vault.
+  Toggle via `toggleAutoBuy()`.
 
 ---
 
@@ -192,7 +205,7 @@ Svelte re-renders UI → Pixi reads the same state each frame.
    components — use `var(--brass)`, `var(--ink-800)`, the per-stage `--sc` accent, etc.
    Fonts: `--font-display` (Silkscreen), `--font-mono` (Spline Sans Mono), `--font-flavor` (Newsreader).
 
-7. **Saves are versioned (currently v8).** If you change the `GameState` shape, bump
+7. **Saves are versioned (currently v11).** If you change the `GameState` shape, bump
    `CURRENT_VERSION` in `SaveManager.ts` and add a migration step in `migrate()`. `Decimal` values
    serialize via the `{ __decimal__: "..." }` wrapper — keep that working. Derived values
    (`globalMult`, `engineMult`) are **recomputed on load** from skills, not trusted from the save.
