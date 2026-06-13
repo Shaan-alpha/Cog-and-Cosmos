@@ -6,10 +6,14 @@
   import TranscendencePanel from './TranscendencePanel.svelte'
   import SettingsPanel from './SettingsPanel.svelte'
   import StatsPanel from './StatsPanel.svelte'
-  import PixiCanvas from '../pixi/PixiCanvas.svelte'
   import { fortune, fmt, isStageUnlocked, transcendCount, transcendPreview, getToasts, removeToast } from '../stores/game.svelte'
   import { STAGE_ROSTER } from '../data/roster'
   import { toggleMuted, isMuted } from '../systems/audio'
+
+  // Pixi is purely decorative, so lazy-load it: this keeps pixi.js out of the
+  // initial bundle (~loaded as a separate async chunk after first paint) and the
+  // sim/UI never wait on it.
+  const PixiCanvasModule = import('../pixi/PixiCanvas.svelte')
 
   type View = 'stages' | 'skills' | 'ascension' | 'stats' | 'settings' | 'transcendence'
   let view = $state<View>('stages')
@@ -95,9 +99,11 @@
     <!-- Viewport: pixel scene -->
     <aside class="viewport-col bracketed">
       <div class="viewport-label">{activeName}</div>
-      {#key activeStage}
-        <PixiCanvas stageId={activeStage} />
-      {/key}
+      {#await PixiCanvasModule then { default: PixiCanvas }}
+        {#key activeStage}
+          <PixiCanvas stageId={activeStage} />
+        {/key}
+      {/await}
     </aside>
 
     <!-- Centre: stage controls -->
