@@ -9,13 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Tested — store-layer integration coverage for the reset/snapshot paths
+### Tested — store-layer integration + view-panel render coverage
 - Added [game.svelte.test.ts](./src/stores/game.svelte.test.ts) — the first integration tests for the live
   store's `gs`-reassignment paths, which the pure-core suites can't reach: challenge enter/complete/abandon
   (snapshot-and-restore + Medal credit + no double-reward), `realityReset` (wipes the live game + Aether pool,
-  keeps `aetherLifetime` and the tr/om/ch trees), and `transcend` (keeps the Aether + Challenge trees). **90 → 97 tests.**
+  keeps `aetherLifetime` and the tr/om/ch trees), and `transcend` (keeps the Aether + Challenge trees).
   Two small test seams added to the store: `maybeCompleteChallenge` is now exported, plus a `__resetStoreForTest()`
   helper (fresh `gs`, no loop). SFX muted in-test so the audio paths are inert under jsdom.
+- Added [panels.render.test.ts](./src/ui/panels.render.test.ts) — mount-smoke for the Transcendence, Omega, and
+  Challenges view panels (the existing UI smoke only covered the stage tabs), catching runtime render errors the
+  type-check can't. **90 → 100 tests.**
 
 ### Added — Phase 3: Challenges (restricted runs → Medals) · Save v13
 - **Challenges** — optional restricted runs (snapshot-and-restore: your save is stashed via `exportSave`
