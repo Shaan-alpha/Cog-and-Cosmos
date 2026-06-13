@@ -1258,8 +1258,8 @@ export function enterChallenge(id: string): boolean {
 }
 
 /** Called once per frame from checkUnlocks while a challenge is active.
- *  Returns true if it completed + restored this frame. */
-function maybeCompleteChallenge(): boolean {
+ *  Returns true if it completed + restored this frame. Exported for tests. */
+export function maybeCompleteChallenge(): boolean {
   const id = gs.activeChallenge
   if (!id) return false
   const def = CHALLENGE_BY_ID[id]
@@ -1524,6 +1524,10 @@ export function hardReset() {
   lastFrameMs = Date.now()
   animFrameId = requestAnimationFrame(tick)
 }
+
+/** Test-only: reset the live store to a fresh game WITHOUT starting the rAF loop
+ *  (keeps store integration tests deterministic). Not used in production. */
+export function __resetStoreForTest() { gs = freshGameState() }
 
 export function isInitialized() { return initialized }
 
