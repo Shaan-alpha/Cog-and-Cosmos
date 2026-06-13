@@ -5,11 +5,12 @@
 import { StageEconomy } from '../systems/StageEconomy'
 import { FortuneEngine } from '../systems/FortuneEngine'
 import { saveGame, loadGame, exportSave, importSave, consumeRebalanceReset } from '../systems/SaveManager'
-import { offlineGain } from '../systems/formulas'
-import { recomputeUpgrades, skillCost, prereqsMet, SKILL_BY_ID, ASCENSION_BY_ID, TRANSCEND_BY_ID } from '../systems/skills'
+import { offlineGain, omegaGain } from '../systems/formulas'
+import { recomputeUpgrades, skillCost, prereqsMet, SKILL_BY_ID, ASCENSION_BY_ID, TRANSCEND_BY_ID, OMEGA_BY_ID } from '../systems/skills'
 import { GLOBAL_SKILLS } from '../data/skills/global'
 import { ASCENSION_SKILLS } from '../data/skills/ascension'
 import { TRANSCENDENCE_SKILLS } from '../data/skills/transcendence'
+import { OMEGA_SKILLS } from '../data/skills/omega'
 import { ACHIEVEMENTS } from '../data/achievements'
 import { playTranscend } from '../systems/audio'
 import { D, ONE, ZERO, fmt as baseFmt, type Dec } from '../systems/Decimal'
@@ -82,6 +83,9 @@ function freshGameState(): GameState {
     aetherLifetime: 0,
     transcendCount: 0,
     fortuneAllTime: ZERO,
+    omega: 0,
+    omegaLifetime: 0,
+    omegaCount: 0,
     settings: {
       numberFormat: 'short',
       autoSaveInterval: 30_000,
@@ -111,6 +115,9 @@ export function fortune() { return gs.engine.fortune }
 export function stageState(id: string) { return gs.stages[id] }
 export function aether() { return gs.aether ?? 0 }
 export function aetherLifetime() { return gs.aetherLifetime ?? 0 }
+export function omega() { return gs.omega ?? 0 }
+export function omegaLifetime() { return gs.omegaLifetime ?? 0 }
+export function omegaCount() { return gs.omegaCount ?? 0 }
 export function transcendCount() { return gs.transcendCount ?? 0 }
 export function fortuneAllTime() { return gs.fortuneAllTime ?? ZERO }
 
@@ -935,7 +942,7 @@ export function buyAscensionSkill(id: string): boolean {
   return true
 }
 
-export { GLOBAL_SKILLS, ASCENSION_SKILLS, TRANSCENDENCE_SKILLS }
+export { GLOBAL_SKILLS, ASCENSION_SKILLS, TRANSCENDENCE_SKILLS, OMEGA_SKILLS }
 
 // ── Transcendence meta-reset (spend ★ all-time for Aether) ───────────────────
 export function transcSkillCostFor(id: string): number {
@@ -1071,6 +1078,143 @@ export function transcend(): boolean {
   gs.transcendCount = (gs.transcendCount ?? 0) + 1
   gs.aether = (gs.aether ?? 0) + pending
   gs.aetherLifetime = (gs.aetherLifetime ?? 0) + pending
+
+  recomputeUpgrades(gs)
+  saveGame(gs).catch(console.error)
+  return true
+}
+
+// ── Reality Reset meta-prestige (Omega Ω) — the layer above Transcendence ────
+export function omegaSkillCostFor(id: string): number {
+  const node = OMEGA_BY_ID[id]
+  if (!node) return 0
+  const lvl = gs.skills[id] ?? 0
+  return Math.ceil(skillCost(node, lvl).toNumber())
+}
+
+export function omegaSkillStatus(id: string): SkillStatus {
+  const node = OMEGA_BY_ID[id]
+  const lvl = gs.skills[id] ?? 0
+  const maxed = !node || lvl >= node.maxLevel
+  const locked = !node || !prereqsMet(node, gs.skills)
+  const cost = omegaSkillCostFor(id)
+  const affordable = !maxed && (gs.omega ?? 0) >= cost
+  return { maxed, locked, affordable, buyable: !maxed && !locked && affordable }
+}
+
+export function buyOmegaSkill(id: string): boolean {
+  const node = OMEGA_BY_ID[id]
+  if (!node) return false
+  const lvl = gs.skills[id] ?? 0
+  if (lvl >= node.maxLevel) return false
+  if (!prereqsMet(node, gs.skills)) return false
+  const cost = omegaSkillCostFor(id)
+  if ((gs.omega ?? 0) < cost) return false
+
+  gs.omega = (gs.omega ?? 0) - cost
+  gs.skills[id] = lvl + 1
+  recomputeUpgrades(gs)
+  saveGame(gs).catch(console.error)
+  return true
+}
+
+export function omegaPreview(): { omegaGained: number; totalOmega: number; ready: boolean } {
+  const lvl = gs.skills['om:reality_multiplier'] ?? 0
+  const deserved = omegaGain(gs.aetherLifetime ?? 0, lvl)
+  const pending = Math.max(0, deserved - (gs.omegaLifetime ?? 0))
+  return {
+    omegaGained: pending,
+    totalOmega: (gs.omega ?? 0) + pending,
+    ready: pending > 0,
+  }
+}
+
+export function realityReset(): boolean {
+  const preview = omegaPreview()
+  if (!preview.ready) return false
+
+  const pending = preview.omegaGained
+  playTranscend()
+
+  const metaActive = (gs.skills['om:eternal_engine'] ?? 0) >= 1
+  const savedAutoBuySettings: Record<string, {
+    autoBuy?: boolean
+    autoBuyMode?: 'cheapest' | 'priority'
+    autoBuyReserve?: number
+    autoBuyMilestoneSnipe?: boolean
+    autoBuyVault?: string[]
+  }> = {}
+  if (metaActive) {
+    for (const [sid, st] of Object.entries(gs.stages) as [string, StageState][]) {
+      savedAutoBuySettings[sid] = {
+        autoBuy: st.autoBuy,
+        autoBuyMode: st.autoBuyMode,
+        autoBuyReserve: st.autoBuyReserve,
+        autoBuyMilestoneSnipe: st.autoBuyMilestoneSnipe,
+        autoBuyVault: st.autoBuyVault ? [...st.autoBuyVault] : [],
+      }
+    }
+  }
+
+  // Wipe stages → fresh, locked except Village
+  for (const sid of Object.keys(STAGE_ECONOMIES)) {
+    gs.stages[sid] = STAGE_ECONOMIES[sid].freshState()
+    if (metaActive && savedAutoBuySettings[sid]) {
+      const saved = savedAutoBuySettings[sid]
+      const st = gs.stages[sid]
+      st.autoBuy = saved.autoBuy
+      st.autoBuyMode = saved.autoBuyMode
+      st.autoBuyReserve = saved.autoBuyReserve
+      st.autoBuyMilestoneSnipe = saved.autoBuyMilestoneSnipe
+      st.autoBuyVault = saved.autoBuyVault
+    }
+  }
+  for (const sid of Object.keys(gs.stages)) {
+    gs.stages[sid].unlocked = (sid === 'village')
+  }
+
+  // Seed Village — honor the (persisting) Aether Start Boost, else default 15.
+  const startBoostLvl = gs.skills['tr:start_boost'] ?? 0
+  const boostAmt = startBoostLvl > 0 ? D(Math.pow(10, 2 * startBoostLvl)) : ZERO
+  if (boostAmt.gt(ZERO)) {
+    gs.stages.village.primaryAmount = boostAmt
+    gs.stages.village.primaryLifetime = boostAmt
+  } else {
+    gs.stages.village.primaryAmount = D(15)
+    gs.stages.village.primaryLifetime = D(15)
+  }
+
+  // Reset Engine (restore slots if Eternal Engine owned)
+  const savedSlots = gs.engine.slots
+  gs.engine = fortuneEngine.freshState()
+  if (metaActive) gs.engine.slots = savedSlots
+
+  // Reset LP
+  gs.legacyPoints = 0
+
+  // Wipe Global + Ascension skills; KEEP Aether (tr:*) AND Omega (om:*) trees
+  const nextSkills: Record<string, number> = {}
+  for (const node of [...TRANSCENDENCE_SKILLS, ...OMEGA_SKILLS]) {
+    const lvl = gs.skills[node.id] ?? 0
+    if (lvl > 0) nextSkills[node.id] = lvl
+  }
+  gs.skills = nextSkills
+
+  // Wipe enchants, space buffers, warp, multiverse, convergence
+  gs.activeEnchants = []
+  gs.spaceBuffers = { ore: ZERO, power: ZERO }
+  gs.warp = { charges: WARP_BASE_CHARGE_CAP, recharge: 0 }
+  gs.multiverse = { branchSlots: [] }
+  gs.convergenceMult = ONE
+
+  // Wipe the Aether POOL + transcend count (design Q1: Ω wipes Æ pool, keeps Æ tree)
+  gs.aether = 0
+  gs.transcendCount = 0
+
+  // Update Omega state
+  gs.omegaCount = (gs.omegaCount ?? 0) + 1
+  gs.omega = (gs.omega ?? 0) + pending
+  gs.omegaLifetime = (gs.omegaLifetime ?? 0) + pending
 
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
