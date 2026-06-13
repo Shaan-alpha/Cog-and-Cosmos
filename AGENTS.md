@@ -29,6 +29,7 @@ npm install
 npm run dev      # http://localhost:5173
 npm run build    # ALWAYS run before claiming a change compiles
 npm run check    # svelte-check
+npm test         # Vitest: pins game-core behaviour (run after touching systems/)
 ```
 
 ## The five rules that matter most

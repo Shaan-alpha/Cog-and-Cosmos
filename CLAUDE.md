@@ -46,9 +46,12 @@ npm run dev      # dev server (HMR)  → http://localhost:5173
 npm run build    # production build  → dist/
 npm run preview  # serve the build
 npm run check    # svelte-check type pass
+npm test         # Vitest: pure-core characterization + UI render-smoke suite
 ```
 
 Always run `npm run build` before claiming a change compiles — it runs the full Svelte + TS pass.
+Run `npm test` after touching `systems/` (the game core) — the suite pins current behaviour
+(incl. a `tick()/rates()` parity guard per stage), so a red test means a behaviour change.
 
 ---
 
@@ -111,6 +114,7 @@ src/
 │   ├── Decimal.ts          break_eternity wrapper. Import Decimal/D/ZERO/ONE/fmt ONLY from here.
 │   ├── formulas.ts         ALL balancing math (pure). Mirrors MASTER_PLAN §17.
 │   ├── StageEconomy.ts     per stage: tick(), rates(), buy(), prestige(), surplus(). Takes extraMult (bindings).
+│   │                       tick()/rates()/autoBuyTick() share _baseMults/_computeFactors/_produceGen (no drift).
 │   ├── FortuneEngine.ts    mints ★ from stage surpluses; manages 8 slots.
 │   ├── skills.ts           skill cost / prereqs / recomputeUpgrades() (derives globalMult + engineMult)
 │   ├── audio.ts            synthesized Web-Audio SFX (no files): playBuy/playMilestone/playPrestige + mute
@@ -120,7 +124,10 @@ src/
 ├── ui/                     Svelte components — render-only, read store accessors.
 │   ├── GameLayout.svelte   shell: masthead, view switch (Stages/Skills/Stats/Settings), dial bar, 3-col deck, unlock toast
 │   ├── StatsPanel.svelte   Statistics view: playtime, ★ totals/rate, global mult, per-stage live table
-│   ├── StagePanel.svelte   generic per-stage panel (generators, rates, binding badges, prestige)
+│   ├── StagePanel.svelte   generic per-stage panel (generators, rates, binding badges, prestige); hosts the stage-twist tabs ↓
+│   ├── EnchantsTab.svelte  Magic tab: active enchant slots + casting dashboard
+│   ├── WarpTab.svelte      Time tab: warp-tick caster
+│   ├── DuplicationTab.svelte  Multiverse tab: branch slots + Convergence collapse
 │   ├── FortuneEnginePanel.svelte   ★ readout + cogs (spin tracks mint rate) + slot board
 │   ├── SkillTree.svelte    Global Skill Tree view (spend ★)
 │   ├── AscensionPanel.svelte   Ascension view: per-stage deep-reset cards + Legacy-Point meta tree

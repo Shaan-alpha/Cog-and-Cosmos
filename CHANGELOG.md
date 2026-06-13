@@ -9,11 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Codebase audit: toolchain upgrade, test suite & structural refactor
+A full audit/refine pass. No gameplay or balance changes — behaviour is pinned by a
+new test suite and verified unchanged throughout.
+
+- **Toolchain upgraded to Vite 8.** Vite 5 → 8, `@sveltejs/vite-plugin-svelte` 4 → 7,
+  plus svelte-check / svelte / TypeScript to current. The CJS-API deprecation warning is gone.
+- **Fixed the type-checker (it was a silent no-op).** `npm run check` was throwing
+  `vite.resolveConfig is not a function` while loading config out of `vite.config.ts`,
+  so **all 12 `.svelte` files were skipped** (it exited 0, looking green). Added a
+  standalone [svelte.config.js](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/svelte.config.js)
+  that svelte-check loads directly; `check` now type-checks the whole UI (0 errors).
+  Dropped `noEmit` from `tsconfig.node.json` to clear the last warning.
+- **Test suite (Vitest).** New characterization tests (77 total) pinning the pure core —
+  `formulas`, `StageEconomy` (incl. a `tick()/rates()` parity guard for every stage's
+  starvation/throttle path), `FortuneEngine`, and `SaveManager.migrate` — plus a jsdom
+  render-smoke suite that mounts the extracted stage tabs. `npm test` / `npm run test:watch`.
+- **Unified the StageEconomy production core.** `tick()`, `rates()` and `autoBuyTick()`
+  shared ~250 hand-synced lines of per-stage starvation/throttle/production logic each.
+  Extracted shared `_baseMults` / `_spaceDemands` / `_computeFactors` / `_produceGen`
+  helpers (mutations stay tick-only via `_siphonSpaceBuffers` / `_applyConsumption`), so
+  `rates()` and `tick()` now run the *same* math — parity is guaranteed, not maintained by
+  hand. `StageEconomy.ts` 833 → 619 lines.
+- **Split `StagePanel.svelte`** (1804 → 1233 lines) — extracted the Magic, Time and
+  Multiverse tabs into [EnchantsTab](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/ui/EnchantsTab.svelte),
+  [WarpTab](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/ui/WarpTab.svelte) and
+  [DuplicationTab](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/ui/DuplicationTab.svelte);
+  shared dashboard styles promoted to `app.css`.
+- **Lazy-loaded the decorative Pixi canvas.** Dynamic-imported behind `{#await}` in
+  GameLayout, moving `pixi.js` out of the initial bundle: main chunk **587 kB → 250 kB**
+  (gzip 172 → 75 kB), Pixi now a separate async chunk after first paint.
+- **FortuneEngine** — replaced the `(def as any)._fortuneThreshold` mutation of shared
+  static defs with a `WeakMap` cache, and de-duplicated the surplus-building loop shared
+  by `tick()`/`ratePreview()`.
+- **Micro-perf & cleanups** — hoisted `effGlobalMult()` out of the per-stage step loop;
+  removed a dead `castEnchant` mana guard and an unused import; normalised a skill read to
+  `?? 0`; added `.gitattributes` for consistent LF line endings.
+
 ### Optimized — Phase 3 Codebase Refactoring & Allocation Optimization
 - **Milestone Cache** ([formulas.ts](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/systems/formulas.ts)) — Pre-allocated static Decimal multipliers for all milestone tiers, reducing dynamic object instantiation in `milestoneMult()` to $O(1)$ memory.
 - **Arithmetic Allocation Reductions** ([formulas.ts](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/systems/formulas.ts)) — Optimized production functions to multiply numeric primitives (`count * dt`) before converting to Decimals, removing multiple dynamic Decimal wrappers inside the loop.
 - **Starvation and Upkeep Allocation Cleanup** ([StageEconomy.ts](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/systems/StageEconomy.ts)) — Replaced redundant `D(number)` allocations inside `autoBuyTick()`, `tick()`, and `rates()` loops with primitive parameters, drastically cutting down memory allocations in hot paths.
-- **Lazy-Cached Engine Thresholds** ([FortuneEngine.ts](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/systems/FortuneEngine.ts)) — Cached stage surplus thresholds dynamically on `StageDefinition` objects after the first computation.
+- **Lazy-Cached Engine Thresholds** ([FortuneEngine.ts](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/systems/FortuneEngine.ts)) — Stage surplus thresholds are cached after first computation (since reworked to a `WeakMap` rather than a hidden field on the shared `StageDefinition` — see the audit entry above).
 
 ### Added — Phase 3 Achievements & Multi-stack Toast Notification Bus · Save v11
 - **Achievement System** ([achievements.ts](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/data/achievements.ts)) — 20 achievements (17 visible, 3 secret) rewarding custom check criteria and compounding +1% or +2% global output multipliers.

@@ -76,9 +76,10 @@ npm run dev      # start the dev server  →  http://localhost:5173
 npm run build    # production build into dist/
 npm run preview  # serve the production build
 npm run check    # svelte-check type pass
+npm test         # Vitest: pure-core characterization + UI render-smoke suite
 ```
 
-Requires **Node 18+**. No paid services, no API keys, no accounts.
+Requires **Node 20.19+ or 22.12+** (Vite 8). No paid services, no API keys, no accounts.
 
 ---
 
