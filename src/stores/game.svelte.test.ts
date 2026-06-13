@@ -6,6 +6,7 @@ import {
   enterChallenge, abandonChallenge, maybeCompleteChallenge,
   activeChallenge, medals, completedChallenges,
   realityReset, transcend,
+  prestigeStage, collectedRelics,
 } from './game.svelte'
 
 // Store-layer integration tests: the snapshot-and-restore + reset paths
@@ -108,5 +109,27 @@ describe('transcend (Aether)', () => {
     expect(g.skills.spark).toBeUndefined()      // global tree wiped
     expect(g.skills['tr:wellspring']).toBe(2)   // Aether tree kept
     expect(g.skills['ch:proven']).toBe(2)       // Challenge tree kept
+  })
+})
+
+describe('Collections — drops + persistence', () => {
+  it('a stage prestige grants the guaranteed common relic first', () => {
+    const g = getState()
+    g.collectedRelics = []
+    g.stages.village.prestigeCount = 0
+    g.stages.village.primaryLifetime = D(1e9)   // ensure prestige yields > 0
+    prestigeStage('village')
+    expect(collectedRelics()).toContain('rl_brass_cog')   // guaranteed common (deterministic, no RNG)
+  })
+  it('relics survive transcend and realityReset', () => {
+    const g = getState()
+    g.collectedRelics = ['rl_brass_cog']
+    g.fortuneAllTime = D(1e8)                    // transcend ready
+    transcend()
+    expect(collectedRelics()).toContain('rl_brass_cog')
+    const g2 = getState()
+    g2.aetherLifetime = 2000                     // realityReset ready
+    realityReset()
+    expect(collectedRelics()).toContain('rl_brass_cog')
   })
 })

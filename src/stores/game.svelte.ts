@@ -13,6 +13,7 @@ import { TRANSCENDENCE_SKILLS } from '../data/skills/transcendence'
 import { OMEGA_SKILLS } from '../data/skills/omega'
 import { CHALLENGE_SKILLS } from '../data/skills/challenge'
 import { CHALLENGES, CHALLENGE_BY_ID, type ChallengeRestriction } from '../data/challenges'
+import { RELICS, RELIC_BY_ID, type RelicRarity } from '../data/collections'
 import { ACHIEVEMENTS } from '../data/achievements'
 import { playTranscend } from '../systems/audio'
 import { D, ONE, ZERO, fmt as baseFmt, type Dec } from '../systems/Decimal'
@@ -91,6 +92,7 @@ function freshGameState(): GameState {
     medals: 0,
     completedChallenges: [],
     activeChallenge: null,
+    collectedRelics: [],
     settings: {
       numberFormat: 'short',
       autoSaveInterval: 30_000,
@@ -134,6 +136,38 @@ function restrictionFor(state: GameState): ChallengeRestriction | null {
   return id ? (CHALLENGE_BY_ID[id]?.restriction ?? null) : null
 }
 export function activeChallengeRestriction(): ChallengeRestriction | null { return restrictionFor(gs) }
+
+// ── Collections (relics) ─────────────────────────────────────────────────────
+export function collectedRelics() { return gs.collectedRelics ?? [] }
+export function relicStats() {
+  const collected = (gs.collectedRelics ?? []).length
+  return { collected, total: RELICS.length }
+}
+
+// Per-event drop chances (tunable). Guaranteed centrepieces ignore chance.
+const RELIC_DROP: Record<RelicRarity, number> = { common: 0.5, uncommon: 0.6, rare: 1.0, legendary: 1.0 }
+
+function grantRelic(id: string): boolean {
+  if (!gs.collectedRelics) gs.collectedRelics = []
+  if (gs.collectedRelics.includes(id)) return false
+  gs.collectedRelics.push(id)
+  recomputeUpgrades(gs)
+  saveGame(gs).catch(console.error)
+  pushToast(`🏺 Relic found: ${RELIC_BY_ID[id]?.name ?? id}`)
+  return true
+}
+
+/** Roll a relic drop of `rarity`: the guaranteed centrepiece first (deterministic), then a random uncollected one. */
+function grantDrop(rarity: RelicRarity, chance: number): boolean {
+  const owned = new Set(gs.collectedRelics ?? [])
+  const guaranteed = RELICS.find(r => r.rarity === rarity && r.guaranteed && !owned.has(r.id))
+  if (guaranteed) return grantRelic(guaranteed.id)
+  if (Math.random() < chance) {
+    const pool = RELICS.filter(r => r.rarity === rarity && !owned.has(r.id))
+    if (pool.length) return grantRelic(pool[Math.floor(Math.random() * pool.length)].id)
+  }
+  return false
+}
 export function transcendCount() { return gs.transcendCount ?? 0 }
 export function fortuneAllTime() { return gs.fortuneAllTime ?? ZERO }
 
@@ -727,7 +761,9 @@ export function prestigeStage(stageId: string): number {
   const economy = STAGE_ECONOMIES[stageId]
   const st = gs.stages[stageId]
   if (!economy || !st) return 0
-  return economy.prestige(st)
+  const gain = economy.prestige(st)
+  if (gain > 0) grantDrop('common', RELIC_DROP.common)
+  return gain
 }
 
 export function prestigePreview(stageId: string): number {
@@ -764,6 +800,7 @@ export function ascendStage(stageId: string): number {
   const gain = economy.ascend(st)
   if (gain > 0) {
     gs.legacyPoints += gain
+    grantDrop('uncommon', RELIC_DROP.uncommon)
     saveGame(gs).catch(console.error)
   }
   return gain
@@ -1098,6 +1135,7 @@ export function transcend(): boolean {
   gs.aether = (gs.aether ?? 0) + pending
   gs.aetherLifetime = (gs.aetherLifetime ?? 0) + pending
 
+  grantDrop('rare', RELIC_DROP.rare)
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
   return true
@@ -1235,6 +1273,7 @@ export function realityReset(): boolean {
   gs.omega = (gs.omega ?? 0) + pending
   gs.omegaLifetime = (gs.omegaLifetime ?? 0) + pending
 
+  grantDrop('legendary', RELIC_DROP.legendary)
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
   return true
@@ -1275,6 +1314,7 @@ export function maybeCompleteChallenge(): boolean {
   real.activeChallenge = null
   real.challengeSnapshot = undefined
   gs = real
+  grantDrop('uncommon', RELIC_DROP.uncommon)
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
   pushToast(`🎖️ Challenge complete: ${def.name} (+${earned} Medals)`)
