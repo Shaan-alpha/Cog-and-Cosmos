@@ -100,7 +100,9 @@ function sanitizeState(state: any): GameState {
   return state
 }
 
-function migrate(raw: GameState): GameState {
+// Exported for unit testing the version-migration ladder. Pure: mutates and
+// returns `raw`, no I/O. Production callers reach it via loadGame/importSave.
+export function migrate(raw: GameState): GameState {
   // v1 → v2: introduce the Global skill tree.
   if (!raw.version || raw.version < 2) {
     raw.skills = raw.skills ?? {}
