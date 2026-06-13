@@ -8,6 +8,7 @@ import { ASCENSION_SKILLS } from '../data/skills/ascension'
 import { TRANSCENDENCE_SKILLS } from '../data/skills/transcendence'
 import { OMEGA_SKILLS } from '../data/skills/omega'
 import { CHALLENGE_SKILLS } from '../data/skills/challenge'
+import { RELICS, RELIC_SETS } from '../data/collections'
 import { ACHIEVEMENTS } from '../data/achievements'
 import type { GameState } from '../data/types'
 
@@ -75,6 +76,21 @@ export function recomputeUpgrades(gs: GameState): void {
   }
   const achMult = 1 + achBoost / 100
 
-  gs.globalMult = D(global * achMult * omegaBonus)
-  gs.engine.engineMult = D(engine * aetherBonus * omegaBonus)
+  // Fold in collected relics + completed rarity-set bonuses (Collections).
+  const collected = new Set(gs.collectedRelics ?? [])
+  let relicGlobalPct = 0, relicEnginePct = 0
+  for (const r of RELICS) {
+    if (!collected.has(r.id)) continue
+    if (r.effect === 'global') relicGlobalPct += r.bonusPct
+    else relicEnginePct += r.bonusPct
+  }
+  for (const s of RELIC_SETS) {
+    const full = RELICS.filter(r => r.rarity === s.rarity).every(r => collected.has(r.id))
+    if (full) { if (s.effect === 'global') relicGlobalPct += s.completionPct; else relicEnginePct += s.completionPct }
+  }
+  const relicGlobalMult = 1 + relicGlobalPct / 100
+  const relicEngineMult = 1 + relicEnginePct / 100
+
+  gs.globalMult = D(global * achMult * omegaBonus * relicGlobalMult)
+  gs.engine.engineMult = D(engine * aetherBonus * omegaBonus * relicEngineMult)
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { recomputeUpgrades } from './skills'
 import { D } from './Decimal'
 import type { GameState } from '../data/types'
+import { RELICS } from '../data/collections'
 
 // Minimal GameState slice: recomputeUpgrades only reads skills/aether/omega/
 // unlockedAchievements and writes globalMult + engine.engineMult.
@@ -44,5 +45,23 @@ describe('recomputeUpgrades — Omega fold', () => {
     // ch:proven +0.25*2 = global ×1.5 ; ch:tempered +0.25*1 = engine ×1.25
     expect(gs.globalMult.toNumber()).toBeCloseTo(1.5, 9)
     expect(gs.engine.engineMult.toNumber()).toBeCloseTo(1.25, 9)
+  })
+})
+
+describe('recomputeUpgrades — relic fold', () => {
+  it('folds a single collected global relic into globalMult', () => {
+    const cog = RELICS.find(r => r.id === 'rl_brass_cog')!  // +2% global
+    const gs = makeState({ collectedRelics: ['rl_brass_cog'] })
+    recomputeUpgrades(gs)
+    expect(gs.globalMult.toNumber()).toBeCloseTo(1 + cog.bonusPct / 100, 9)
+  })
+  it('adds the set completion bonus when a whole rarity is collected', () => {
+    const commons = RELICS.filter(r => r.rarity === 'common').map(r => r.id)
+    const gs = makeState({ collectedRelics: commons })
+    recomputeUpgrades(gs)
+    // sum of common *global* relic bonuses + the common set completionPct (5%, effect global)
+    const sumPct = RELICS.filter(r => r.rarity === 'common' && r.effect === 'global')
+      .reduce((a, r) => a + r.bonusPct, 0) + 5
+    expect(gs.globalMult.toNumber()).toBeCloseTo(1 + sumPct / 100, 9)
   })
 })
