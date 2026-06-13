@@ -1230,4 +1230,10 @@
     color: rgba(224, 94, 94, 1);
     background: rgba(224, 94, 94, 0.08);
   }
+
+  /* ── Mobile (≤ 720px): stack the 2-col dashboards; wrap the buy-mode row ── */
+  @media (max-width: 720px) {
+    .status-grid, .time-status { grid-template-columns: 1fr; }
+    .buy-mode { flex-wrap: wrap; }
+  }
 </style>
