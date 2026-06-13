@@ -12,7 +12,7 @@ import { ASCENSION_SKILLS } from '../data/skills/ascension'
 import { TRANSCENDENCE_SKILLS } from '../data/skills/transcendence'
 import { ACHIEVEMENTS } from '../data/achievements'
 import { playTranscend } from '../systems/audio'
-import { D, ONE, ZERO, fmt as baseFmt, fmtRate as baseFmtRate, type Dec } from '../systems/Decimal'
+import { D, ONE, ZERO, fmt as baseFmt, type Dec } from '../systems/Decimal'
 import type { GameState, StageState } from '../data/types'
 import villageDef from '../data/stages/village'
 import farmDef from '../data/stages/farm'
@@ -345,6 +345,10 @@ function stepSim(dt: number) {
     }
   }
 
+  // Effective global mult is invariant within a step (skills/convergence only change
+  // outside the loop) — compute it once instead of twice per stage.
+  const eff = effGlobalMult()
+
   // Village ticks before Farm (registration order), so Farm reads fresh Labor this step.
   for (let i = 0; i < ECONOMY_LIST.length; i++) {
     const [sid, economy] = ECONOMY_LIST[i]
@@ -353,7 +357,7 @@ function stepSim(dt: number) {
     economy.tick(
       st,
       dt,
-      effGlobalMult(),
+      eff,
       bindingMultFor(sid, gs.stages, false),  // sim must see fresh in-step Labor, not cache
       gs.stages,
       gs.activeEnchants,
@@ -364,7 +368,7 @@ function stepSim(dt: number) {
     if (st.autoBuy && st.prestigeCount >= 1) {
       economy.autoBuyTick(
         st,
-        effGlobalMult(),
+        eff,
         bindingMultFor(sid, gs.stages, false),
         gs.stages,
         gs.activeEnchants,
@@ -1105,7 +1109,7 @@ export function castEnchant(enchantId: string, targetStageId: string, essenceSpe
   
   // Slots limit
   let maxSlots = 2
-  if (gs.skills['magic:twin_casting'] >= 1) maxSlots += 1
+  if ((gs.skills['magic:twin_casting'] ?? 0) >= 1) maxSlots += 1
   if ((gs.stages.magic?.generators.archmage?.count ?? 0) >= 50) maxSlots += 1
   if (gs.activeEnchants.length >= maxSlots) return false
 
@@ -1147,9 +1151,9 @@ export function castEnchant(enchantId: string, targetStageId: string, essenceSpe
     return false
   }
 
-  // Mana cost check
+  // Mana cost is a fraction (pctCost ≤ 1) of current Mana, so it is always
+  // affordable by construction — no separate guard needed.
   const manaCost = magic.primaryAmount.mul(pctCost)
-  if (magic.primaryAmount.lt(manaCost)) return false
 
   // Essence cost check
   const actualEssence = canAmp ? Math.max(0, essenceSpent) : 0
