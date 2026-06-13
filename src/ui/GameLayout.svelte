@@ -4,9 +4,10 @@
   import SkillTree from './SkillTree.svelte'
   import AscensionPanel from './AscensionPanel.svelte'
   import TranscendencePanel from './TranscendencePanel.svelte'
+  import OmegaPanel from './OmegaPanel.svelte'
   import SettingsPanel from './SettingsPanel.svelte'
   import StatsPanel from './StatsPanel.svelte'
-  import { fortune, fmt, isStageUnlocked, transcendCount, transcendPreview, getToasts, removeToast } from '../stores/game.svelte'
+  import { fortune, fmt, isStageUnlocked, transcendCount, transcendPreview, omegaCount, omegaPreview, getToasts, removeToast } from '../stores/game.svelte'
   import { STAGE_ROSTER } from '../data/roster'
   import { toggleMuted, isMuted } from '../systems/audio'
 
@@ -15,13 +16,14 @@
   // sim/UI never wait on it.
   const PixiCanvasModule = import('../pixi/PixiCanvas.svelte')
 
-  type View = 'stages' | 'skills' | 'ascension' | 'stats' | 'settings' | 'transcendence'
+  type View = 'stages' | 'skills' | 'ascension' | 'stats' | 'settings' | 'transcendence' | 'omega'
   let view = $state<View>('stages')
   let activeStage = $state('village')
   let muted = $state(isMuted())
   const fort = $derived(fortune())
   const activeName = $derived(STAGE_ROSTER.find(d => d.id === activeStage)?.name ?? '')
   const canSeeTrans = $derived(transcendCount() > 0 || transcendPreview().aetherGained > 0)
+  const canSeeOmega = $derived(omegaCount() > 0 || omegaPreview().omegaGained > 0)
   const toasts = $derived(getToasts())
 
   function selectStage(id: string) {
@@ -58,6 +60,9 @@
       <button class="view-btn {view === 'ascension' ? 'active' : ''}" onclick={() => view = 'ascension'}>🜲 Ascension</button>
       {#if canSeeTrans}
         <button class="view-btn tr-btn {view === 'transcendence' ? 'active' : ''}" onclick={() => view = 'transcendence'}>Æ Transcendence</button>
+      {/if}
+      {#if canSeeOmega}
+        <button class="view-btn om-btn {view === 'omega' ? 'active' : ''}" onclick={() => view = 'omega'}>Ω Reality</button>
       {/if}
       <button class="view-btn {view === 'stats' ? 'active' : ''}" onclick={() => view = 'stats'}>📊 Stats</button>
       <button class="view-btn {view === 'settings' ? 'active' : ''}" onclick={() => view = 'settings'}>🔧 Settings</button>
@@ -127,6 +132,10 @@
   {:else if view === 'transcendence'}
     <div class="skills-view">
       <TranscendencePanel />
+    </div>
+  {:else if view === 'omega'}
+    <div class="skills-view">
+      <OmegaPanel />
     </div>
   {:else if view === 'stats'}
     <div class="skills-view">
@@ -218,6 +227,8 @@
   .view-btn.active { background: var(--brass-deep); color: var(--ink-900); font-weight: 700; }
   .view-btn.active.tr-btn { background: #522b92; color: var(--parchment); font-weight: 700; border-color: var(--aether, #9d5fe3); box-shadow: 0 0 10px rgba(157, 95, 227, 0.4); }
   .view-btn.tr-btn:hover:not(.active) { color: var(--aether, #9d5fe3); }
+  .view-btn.active.om-btn { background: #8a6a14; color: var(--parchment); font-weight: 700; border-color: var(--omega, #ffd76b); box-shadow: 0 0 10px rgba(255, 215, 107, 0.4); }
+  .view-btn.om-btn:hover:not(.active) { color: var(--omega, #ffd76b); }
 
   .mast-right { display: flex; align-items: center; gap: 12px; }
 
