@@ -15,6 +15,12 @@ new test suite and verified unchanged throughout.
 
 - **Toolchain upgraded to Vite 8.** Vite 5 → 8, `@sveltejs/vite-plugin-svelte` 4 → 7,
   plus svelte-check / svelte / TypeScript to current. The CJS-API deprecation warning is gone.
+- **TypeScript upgraded to 6.0** (`typescript` 5.9 → 6.0.3). Removed the now-deprecated `baseUrl`
+  (and the unused `$lib`/`$data` `paths` — dead config) from `tsconfig.json`; under
+  `moduleResolution: "bundler"` neither is needed, so no `ignoreDeprecations` escape hatch. Added the
+  standard `src/vite-env.d.ts` (`/// <reference types="vite/client" />`) so TS 6.0's stricter
+  side-effect-import rule accepts `import './app.css'` in `main.ts` (also types `import.meta.env`).
+  `target` stays ES2022 — that's the browser-support floor, not a stale dep. check/build/test all green.
 - **Fixed the type-checker (it was a silent no-op).** `npm run check` was throwing
   `vite.resolveConfig is not a function` while loading config out of `vite.config.ts`,
   so **all 12 `.svelte` files were skipped** (it exited 0, looking green). Added a
