@@ -6,9 +6,10 @@
   import TranscendencePanel from './TranscendencePanel.svelte'
   import OmegaPanel from './OmegaPanel.svelte'
   import ChallengesPanel from './ChallengesPanel.svelte'
+  import CollectionsPanel from './CollectionsPanel.svelte'
   import SettingsPanel from './SettingsPanel.svelte'
   import StatsPanel from './StatsPanel.svelte'
-  import { fortune, fmt, isStageUnlocked, transcendCount, transcendPreview, omegaCount, omegaPreview, completedChallenges, activeChallenge, anyStageAscended, getToasts, removeToast } from '../stores/game.svelte'
+  import { fortune, fmt, isStageUnlocked, transcendCount, transcendPreview, omegaCount, omegaPreview, completedChallenges, activeChallenge, anyStageAscended, collectedRelics, getToasts, removeToast } from '../stores/game.svelte'
   import { STAGE_ROSTER } from '../data/roster'
   import { toggleMuted, isMuted } from '../systems/audio'
 
@@ -17,7 +18,7 @@
   // sim/UI never wait on it.
   const PixiCanvasModule = import('../pixi/PixiCanvas.svelte')
 
-  type View = 'stages' | 'skills' | 'ascension' | 'stats' | 'settings' | 'transcendence' | 'omega' | 'challenges'
+  type View = 'stages' | 'skills' | 'ascension' | 'stats' | 'settings' | 'transcendence' | 'omega' | 'challenges' | 'collections'
   let view = $state<View>('stages')
   let activeStage = $state('village')
   let muted = $state(isMuted())
@@ -26,6 +27,7 @@
   const canSeeTrans = $derived(transcendCount() > 0 || transcendPreview().aetherGained > 0)
   const canSeeOmega = $derived(omegaCount() > 0 || omegaPreview().omegaGained > 0)
   const canSeeChallenges = $derived(!!activeChallenge() || completedChallenges().length > 0 || anyStageAscended())
+  const canSeeCollections = $derived(collectedRelics().length > 0)
   const toasts = $derived(getToasts())
 
   // Mobile: keep the active view button centred in the horizontally-scrollable nav strip.
@@ -75,6 +77,9 @@
       {/if}
       {#if canSeeChallenges}
         <button class="view-btn ch-btn {view === 'challenges' ? 'active' : ''}" onclick={() => view = 'challenges'}>⚔ Challenges</button>
+      {/if}
+      {#if canSeeCollections}
+        <button class="view-btn rl-btn {view === 'collections' ? 'active' : ''}" onclick={() => view = 'collections'}>⬡ Collections</button>
       {/if}
       <button class="view-btn {view === 'stats' ? 'active' : ''}" onclick={() => view = 'stats'}>📊 Stats</button>
       <button class="view-btn {view === 'settings' ? 'active' : ''}" onclick={() => view = 'settings'}>🔧 Settings</button>
@@ -152,6 +157,10 @@
   {:else if view === 'challenges'}
     <div class="skills-view">
       <ChallengesPanel />
+    </div>
+  {:else if view === 'collections'}
+    <div class="skills-view">
+      <CollectionsPanel />
     </div>
   {:else if view === 'stats'}
     <div class="skills-view">
@@ -247,6 +256,8 @@
   .view-btn.om-btn:hover:not(.active) { color: var(--omega, #ffd76b); }
   .view-btn.active.ch-btn { background: #7a3a1f; color: var(--parchment); font-weight: 700; border-color: var(--challenge, #e06b3b); box-shadow: 0 0 10px rgba(224, 107, 59, 0.4); }
   .view-btn.ch-btn:hover:not(.active) { color: var(--challenge, #e06b3b); }
+  .view-btn.active.rl-btn { background: #2f5e47; color: var(--parchment); font-weight: 700; border-color: var(--relic, #6fae8f); box-shadow: 0 0 10px rgba(111, 174, 143, 0.4); }
+  .view-btn.rl-btn:hover:not(.active) { color: var(--relic, #6fae8f); }
 
   .mast-right { display: flex; align-items: center; gap: 12px; }
 

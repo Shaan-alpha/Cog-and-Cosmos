@@ -4,6 +4,7 @@ import { mount, unmount, flushSync } from 'svelte'
 import TranscendencePanel from './TranscendencePanel.svelte'
 import OmegaPanel from './OmegaPanel.svelte'
 import ChallengesPanel from './ChallengesPanel.svelte'
+import CollectionsPanel from './CollectionsPanel.svelte'
 
 // Render smoke tests for the meta-prestige + Challenges view panels. The
 // type-check covers bindings; this covers runtime mount against the real store
@@ -39,5 +40,11 @@ describe('view panels mount without crashing', () => {
     const el = render(ChallengesPanel)
     expect(el.textContent).toContain('CHALLENGES')
     expect(el.textContent).toContain('Trial Tree')
+  })
+
+  it('CollectionsPanel renders the relic tiers', () => {
+    const el = render(CollectionsPanel)
+    expect(el.textContent).toContain('COLLECTIONS')
+    expect(el.textContent).toContain('Legendary')
   })
 })
