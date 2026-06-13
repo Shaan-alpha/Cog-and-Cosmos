@@ -119,7 +119,8 @@ src/
 │   ├── skills/omega.ts     Reality (Ω) meta tree (4 nodes, spent in Omega)
 │   ├── skills/challenge.ts Challenge (Medal) tree (4 nodes, spent in Medals)
 │   ├── achievements.ts     20 achievements (17 visible, 3 secret) → compounding global output boosts
-│   └── challenges.ts       4 restricted-run defs (restriction + goal + Medal reward)
+│   ├── challenges.ts       4 restricted-run defs (restriction + goal + Medal reward)
+│   └── collections.ts      18 relic defs (4 rarity tiers) + rarity-set bonuses
 ├── systems/                Pure game core — NO Svelte imports here.
 │   ├── Decimal.ts          break_eternity wrapper. Import Decimal/D/ZERO/ONE/fmt ONLY from here.
 │   ├── formulas.ts         ALL balancing math (pure). Mirrors MASTER_PLAN §17.
@@ -128,11 +129,11 @@ src/
 │   ├── FortuneEngine.ts    mints ★ from stage surpluses; manages 8 slots.
 │   ├── skills.ts           skill cost / prereqs / recomputeUpgrades() (derives globalMult + engineMult)
 │   ├── audio.ts            synthesized Web-Audio SFX (no files): playBuy/playMilestone/playPrestige + mute
-│   └── SaveManager.ts      IndexedDB+localStorage, lz-string, versioned migrate() (currently v13)
+│   └── SaveManager.ts      IndexedDB+localStorage, lz-string, versioned migrate() (currently v14)
 ├── stores/
 │   └── game.svelte.ts      the ONE reactive store + the 20 Hz fixed-step loop. Bridges systems ↔ UI.
 ├── ui/                     Svelte components — render-only, read store accessors.
-│   ├── GameLayout.svelte   shell: masthead, view switch (Stages/Skills/Ascension/Transcendence/Omega/Challenges/Stats/Settings), dial bar, 3-col deck, stacking toast bus
+│   ├── GameLayout.svelte   shell: masthead, view switch (Stages/Skills/Ascension/Transcendence/Omega/Challenges/Collections/Stats/Settings), dial bar, 3-col deck, stacking toast bus
 │   ├── StatsPanel.svelte   Statistics view: playtime, ★ totals/rate, global mult, per-stage live table + 🏆 Achievements sub-tab
 │   ├── StagePanel.svelte   generic per-stage panel (generators, rates, binding badges, prestige); hosts the stage-twist tabs ↓
 │   ├── EnchantsTab.svelte  Magic tab: active enchant slots + casting dashboard
@@ -144,6 +145,7 @@ src/
 │   ├── TranscendencePanel.svelte  Transcendence view: Aether Æ altar (deeper reset → Æ) + Æ tree
 │   ├── OmegaPanel.svelte   Reality Reset view: Omega Ω collapse altar (deepest reset → Ω) + Ω tree
 │   ├── ChallengesPanel.svelte  Challenges view: roster + active-run banner + Medal (Trial) tree
+│   ├── CollectionsPanel.svelte  Collections view: relic grid by rarity tier + set completion
 │   ├── SettingsPanel.svelte    Settings view: export/import, hard reset, number-format toggle, mute
 │   ├── OnboardingTooltip.svelte    "new system" onboarding hints
 │   └── OfflineSummary.svelte
@@ -184,7 +186,10 @@ Svelte re-renders UI → Pixi reads the same state each frame.
   *and* the Aether pool + `transcendCount` to mint **Omega (Ω)** via `omegaGain()` (cube-root of `aetherLifetime`),
   keeping the Æ tree. Its 4-node Ω tree (`buyOmegaSkill()`) folds into `recomputeUpgrades()`, and `1 + 0.10·Ω`
   multiplies *both* `globalMult` and `engine.engineMult`. `omegaPreview()` drives the UI.
-- **SPA views** — `view` state in `GameLayout` swaps Stages ↔ Skills ↔ Ascension ↔ Transcendence ↔ Omega ↔ Challenges ↔ Stats ↔ Settings, no reload.
+- **SPA views** — `view` state in `GameLayout` swaps Stages ↔ Skills ↔ Ascension ↔ Transcendence ↔ Omega ↔ Challenges ↔ Collections ↔ Stats ↔ Settings, no reload.
+- **Collections** — relics drop via `grantDrop(rarity, chance)` (guaranteed centrepiece first, then random uncollected)
+  hooked into `prestigeStage`/`ascendStage`/`transcend`/`realityReset`/`maybeCompleteChallenge`; `collectedRelics`
+  is permanent (survives every reset) and its relic + rarity-set bonuses fold into `recomputeUpgrades()`.
 - **Challenges** — `enterChallenge()` stashes the real save (`exportSave`) and swaps `gs` to a fresh restricted run;
   `maybeCompleteChallenge()` (called from `checkUnlocks`) restores it (`importSave`) and credits **Medals** on the
   real save. `activeChallengeRestriction()` gates auto-buy / bindings / `prodMult` / prestige at their hook points;
@@ -222,7 +227,7 @@ Svelte re-renders UI → Pixi reads the same state each frame.
    components — use `var(--brass)`, `var(--ink-800)`, the per-stage `--sc` accent, etc.
    Fonts: `--font-display` (Silkscreen), `--font-mono` (Spline Sans Mono), `--font-flavor` (Newsreader).
 
-7. **Saves are versioned (currently v13).** If you change the `GameState` shape, bump
+7. **Saves are versioned (currently v14).** If you change the `GameState` shape, bump
    `CURRENT_VERSION` in `SaveManager.ts` and add a migration step in `migrate()`. `Decimal` values
    serialize via the `{ __decimal__: "..." }` wrapper — keep that working. Derived values
    (`globalMult`, `engineMult`) are **recomputed on load** from skills, not trusted from the save.

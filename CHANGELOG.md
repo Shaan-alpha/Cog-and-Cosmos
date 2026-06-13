@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Phase 3: Collections (relics) · Save v14
+- **Collections** — 18 collectible relics across four rarity tiers that **drop as you reset**: prestige →
+  Common, ascension/challenge-clear → Uncommon, transcendence → Rare, reality-reset → Legendary (each tier's
+  centrepiece is a guaranteed first-time drop). Each relic grants a permanent passive global/mint %, and
+  completing a rarity set grants a bonus — all folded into `recomputeUpgrades()`.
+- **Collections view** ([CollectionsPanel.svelte](./src/ui/CollectionsPanel.svelte)) — a gated `⬡ Collections`
+  grid by rarity (collected cards vs locked silhouettes, per-tier set completion). `collectedRelics` is
+  permanent meta surviving every reset.
+- **Save Version v14** — additive migration seeding `collectedRelics`.
+
 ### Added — Phase 3: Mobile / touch UX pass
 - **Responsive layout for phones** — the desktop shell now reflows below **720px**: a slim masthead, the
   view-nav and stage-dial bars become horizontally-scrollable strips (active tab auto-centres), and the
