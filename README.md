@@ -65,6 +65,7 @@ a **Global Skill Tree**, per-stage auto-buyers, a Statistics panel, and an insta
 | **Achievements system (20 milestones + global output boost)** | ✅ live |
 | **Multi-stack Toast Notification Bus** | ✅ live |
 | **Reality Reset (Ω) meta-layer (+10%/Ω global & mint) + Ω tree** | ✅ live |
+| **Challenges (restricted runs → Medals 🎖️ + Trial tree)** | ✅ live |
 
 ---
 

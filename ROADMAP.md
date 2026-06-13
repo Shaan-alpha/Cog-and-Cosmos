@@ -49,7 +49,7 @@ Legend: ✅ done · 🔨 in progress · 🔜 next · 📦 planned
 - ✅ **Reality Reset** (Omega Ω) meta layer — the prestige stack is now complete (Prestige → Ascension → Transcendence → Reality Reset)
 - 📦 Events (seasonal, random encounters, rare bosses, mini-games)
 - 📦 Collections (relics/pets/artifacts/cards) + set bonuses
-- 📦 Challenges (restriction/time/endless)
+- ✅ **Challenges** (restricted runs → Medals + a Trial tree) — restriction runs live; time/endless deferred
 - 📦 Mobile/touch UX, encyclopedia
 - 📦 Free cloud sync (Supabase/Firebase free tier)
 - **Exit criteria:** 100+ hours of meaningful progression; healthy D7 retention in playtests.

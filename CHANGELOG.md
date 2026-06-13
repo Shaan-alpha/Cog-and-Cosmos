@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Phase 3: Challenges (restricted runs → Medals) · Save v13
+- **Challenges** — optional restricted runs (snapshot-and-restore: your save is stashed via `exportSave`
+  and restored via `importSave` on exit, so normal progress is never at risk). v1 roster of 4
+  ([challenges.ts](./src/data/challenges.ts)): Spartan Cogs (no auto-buyers), Broken Chain (no bindings),
+  Half Measures (×0.5 production), Purist (no prestige + no auto-buy). Restrictions are read via one
+  `activeChallengeRestriction()` helper at 4 hooks (stepSim, bindingMultFor, effGlobalMult, prestigeStage).
+- **Medals (🎖️) + Trial tree** ([skills/challenge.ts](./src/data/skills/challenge.ts)) — clearing a challenge
+  grants Medals, spent on a 4-node tree that folds into `recomputeUpgrades()` and persists through every reset.
+- **Challenges view** ([ChallengesPanel.svelte](./src/ui/ChallengesPanel.svelte)) — gated `⚔ Challenges` SPA
+  view (after first Ascension) with the roster, active-run banner, and the Medal tree.
+- **Save Version v13** — additive migration seeding `medals`, `completedChallenges`, `activeChallenge`.
+
 ### Added — Phase 3: Reality Reset (Ω) meta-layer · Save v12
 - **Reality Reset (Ω)** — the fourth and final meta-prestige layer, above Transcendence. A brutal
   global reset that mints **Omega (Ω)** from all-time Aether (`floor(cbrt(aetherLifetime/1e3) · (1+0.15·L))`),
