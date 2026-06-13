@@ -50,7 +50,7 @@ Legend: ✅ done · 🔨 in progress · 🔜 next · 📦 planned
 - 📦 Events (seasonal, random encounters, rare bosses, mini-games)
 - 📦 Collections (relics/pets/artifacts/cards) + set bonuses
 - ✅ **Challenges** (restricted runs → Medals + a Trial tree) — restriction runs live; time/endless deferred
-- 📦 Mobile/touch UX, encyclopedia
+- ✅ **Mobile/touch UX** (responsive shell + ≥44px touch targets + safe-area); 📦 encyclopedia deferred
 - 📦 Free cloud sync (Supabase/Firebase free tier)
 - **Exit criteria:** 100+ hours of meaningful progression; healthy D7 retention in playtests.
 

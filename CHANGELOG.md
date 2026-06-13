@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Phase 3: Mobile / touch UX pass
+- **Responsive layout for phones** — the desktop shell now reflows below **720px**: a slim masthead, the
+  view-nav and stage-dial bars become horizontally-scrollable strips (active tab auto-centres), and the
+  3-column Stages deck collapses to a single vertical scroll (StagePanel → Fortune Engine → slim Pixi strip,
+  with the decorative Pixi viewport hidden **≤ 480px** for space + perf).
+- **Touch ergonomics** — `--tap-min: 44px` on every button on mobile, `touch-action: manipulation` to kill the
+  tap delay, 2-column dashboards/altars (StagePanel, Aether/Omega, Enchants, Settings) collapse to one column,
+  and the Statistics per-stage table scrolls horizontally in-frame instead of breaking.
+- **Safe-area** — `viewport-fit=cover` + `env(safe-area-inset-*)` padding so content clears notches/home-bars.
+- CSS-only (one guarded `scrollIntoView`); no save-schema or game-logic change. Desktop layout unchanged
+  (all rules live inside `max-width` media queries).
+
 ### Tested — store-layer integration + view-panel render coverage
 - Added [game.svelte.test.ts](./src/stores/game.svelte.test.ts) — the first integration tests for the live
   store's `gs`-reassignment paths, which the pure-core suites can't reach: challenge enter/complete/abandon

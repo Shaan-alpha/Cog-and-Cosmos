@@ -66,6 +66,7 @@ a **Global Skill Tree**, per-stage auto-buyers, a Statistics panel, and an insta
 | **Multi-stack Toast Notification Bus** | ✅ live |
 | **Reality Reset (Ω) meta-layer (+10%/Ω global & mint) + Ω tree** | ✅ live |
 | **Challenges (restricted runs → Medals 🎖️ + Trial tree)** | ✅ live |
+| **Mobile / touch UX (responsive layout, ≥44px targets, safe-area)** | ✅ live |
 
 ---
 
