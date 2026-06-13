@@ -53,6 +53,19 @@ new test suite and verified unchanged throughout.
   `unlockNotice` → `pushToast()` stacking-toast note, the two-mode (`cheapest`/`priority`)
   auto-buyer description, and the six-view SPA switch (incl. Transcendence); fixed the README's
   SPA-view row. Docs-only — no code or behaviour change.
+- **`rates()` memoized per sim step.** `stageRates()` now caches each stage's `economy.rates()` behind a
+  reactive `ratesStamp` (`$state`) bumped once per `stepSim`, so the Decimal-heavy rate math runs at most
+  once per stage per step instead of once per stage per render frame (the Statistics panel reads every
+  stage each frame). Reactivity is preserved — the stamp is `$state`, so cache-hit readers still re-derive;
+  rate readouts lag the sim by ≤1 step (50 ms). Guarded by the existing `tick()`/`rates()` parity tests.
+- **Removed dead `getUnlockNotice()` / `clearUnlockNotice()`** store exports — vestigial no-ops left from the
+  `unlockNotice` → stacking-toast migration, with zero callers anywhere.
+- **Reconciled MASTER_PLAN's "Balancing & Formula Reference"** with the shipped code. It still presented the
+  pre-v5-rebalance numbers as "the authoritative contract": milestone ×7/×10 (now flat ×2), a sqrt→log
+  prestige split (now sqrt for every stage), ascension exponent 0.40 (code uses 0.33), and per-stage
+  k/Csoft/fortuneWeight tables that were wrong in every cell. Added a **SUPERSEDED** banner pointing to
+  `formulas.ts` + the stage defs as the source of truth, corrected the two constant tables and the regime
+  map, and fixed two stale references (`break_infinity.js` → `break_eternity.js`; a non-existent `balance.json`).
 
 ### Optimized — Phase 3 Codebase Refactoring & Allocation Optimization
 - **Milestone Cache** ([formulas.ts](file:///c:/Users/shaan/Desktop/Cog%20and%20Cosmos/src/systems/formulas.ts)) — Pre-allocated static Decimal multipliers for all milestone tiers, reducing dynamic object instantiation in `milestoneMult()` to $O(1)$ memory.

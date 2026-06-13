@@ -156,6 +156,14 @@ const STAGE_BINDINGS: Record<string, BindingRule[]> = {
 // useCache=false because it ticks Village→Farm in-order and must see fresh Labor mid-step.
 let bindingStamp = 0
 const bindingCache: Record<string, { stamp: number; val: Dec }> = {}
+// Per-step memo of each stage's production rates. `ratesStamp` is reactive ($state) and bumps
+// once per sim step, so every UI reader (StatsPanel's all-stage table, StagePanel, WarpTab)
+// re-derives in lock-step with the sim — but the expensive economy.rates() Decimal math runs at
+// most once per stage per step, not once per stage per render frame. It MUST be $state: on a
+// cache hit stageRates() reads only the stamp, so a plain `let` would leave hit-path readers
+// unsubscribed (frozen). Lag is bounded by one sim step (≤50ms).
+let ratesStamp = $state(0)
+const ratesCache: Record<string, { stamp: number; val: { primary: Dec; secondary: Dec; labor: Dec } }> = {}
 // Echo-sustain ratio for Multiverse duplication, refreshed each sim step (0–1). Drives how
 // much of each slot's dupPct is actually delivered when Echoes can't cover full upkeep.
 let mvEchoSustain = 1
@@ -333,6 +341,7 @@ function checkAchievements(state: GameState): string[] {
 function stepSim(dt: number) {
   gs.totalPlaytimeMs += dt * 1000
   bindingStamp++   // invalidate the per-frame binding-mult cache; state is about to change
+  ratesStamp++     // invalidate the per-step rates memo (reactive — re-derives all rate readers)
 
   // Tick active enchants
   if (gs.activeEnchants) {
@@ -639,9 +648,6 @@ function checkUnlocks() {
   }
 }
 
-export function getUnlockNotice() { return null }
-export function clearUnlockNotice() {}
-
 function tick(nowMs: number) {
   let frameDt = (nowMs - lastFrameMs) / 1000
   lastFrameMs = nowMs
@@ -774,12 +780,19 @@ export function assignEngineSlotAt(index: number, stageId: string): void {
   saveGame(gs).catch(console.error)
 }
 
-/** Per-second production rates for a stage's currencies (read-only, safe per frame). */
+/** Per-second production rates for a stage's currencies (read-only, safe per frame).
+ *  Memoized per sim step via `ratesStamp`: the Decimal-heavy economy.rates() runs at most once
+ *  per stage per step even when several panels read the same stage in one render frame. */
 export function stageRates(stageId: string): { primary: Dec; secondary: Dec; labor: Dec } {
+  const stamp = ratesStamp                       // reactive read → readers re-run when a step bumps it
+  const cached = ratesCache[stageId]
+  if (cached && cached.stamp === stamp) return cached.val
   const economy = STAGE_ECONOMIES[stageId]
   const st = gs.stages[stageId]
   if (!economy || !st) return { primary: ZERO, secondary: ZERO, labor: ZERO }
-  return economy.rates(st, effGlobalMult(), bindingMultFor(stageId), gs.stages, gs.activeEnchants, gs.skills, gs.spaceBuffers)
+  const val = economy.rates(st, effGlobalMult(), bindingMultFor(stageId), gs.stages, gs.activeEnchants, gs.skills, gs.spaceBuffers)
+  ratesCache[stageId] = { stamp, val }
+  return val
 }
 
 

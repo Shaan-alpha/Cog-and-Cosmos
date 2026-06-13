@@ -4291,14 +4291,14 @@ Every `data/stages/NN-*.json` conforms to `stage.schema.ts`. The `stageEngine` r
 }
 ```
 
-### Core Formulas (referenced by `systems/`, sourced from `balance.json`)
+### Core Formulas (implemented in `src/systems/formulas.ts` + the per-stage defs)
 
 ```text
 COST (single):     cost_n   = base * r^n                       r = 1.07 early … 1.15 late
 COST (bulk k):     Σ        = base*r^n * (r^k − 1)/(r − 1)
 MAX AFFORDABLE k:  floor( log_r( cash*(r−1)/(base*r^n) + 1 ) )
 PRODUCTION:        output   = count * baseRate * tierMult * globalMult
-TIER MULT:         x7..x10 at owned counts 10 / 25 / 50 / 100 / 200 / 500
+TIER MULT:         flat ×2 at owned counts 10 / 25 / 50 / 100 / 250 / 500 / 1000 / 2500  (shipped)
 SOFTCAP (x>C):     eff(x)   = C * (1 + (x − C)/C)^0.5
 STAGE PRESTIGE:    gain     = floor( k * (lifetimePrimary / softcap)^0.5 )
 FORTUNE MINT:      dStar/dt = Σ_stages log10(1 + stageSurplus) * fortuneWeight * engineMult
@@ -4822,7 +4822,24 @@ Recovery always prefers the **newest blob that passes checksum + migrates cleanl
 
 ## Balancing & Formula Reference
 
-This section is the authoritative numerical contract for COG & COSMOS — The Fortune Engine. Every generator, currency, prestige layer, and the Fortune Engine (Mill) draws its math from the formulas below. All constants are tuned against the SPEC baselines (cost growth r≈1.07→1.15, milestone tiers x7..x10, sqrt prestige, log-weighted Fortune mint, 2h offline base window). Numbers use `break_infinity.js` (Decimal) once any value can exceed ~1e308; below that, native JS `number` is fine.
+> ⚠️ **SUPERSEDED — original design target, not the shipped numbers.** The live balance was reworked in the
+> **v5 rebalance** (see `RESET_BELOW_VERSION` in `SaveManager.ts`) and is now defined by code, not this section.
+> **Source of truth: [`src/systems/formulas.ts`](./src/systems/formulas.ts) (the `BALANCE` block + the pure
+> formulas) and each stage's def in [`src/data/stages/`](./src/data/stages/).** This section is kept for design
+> rationale; where it disagrees with the code, **the code wins.** Key deltas the rebalance introduced:
+>
+> - **Milestone multiplier:** flat **×2** for every stage at counts {10, 25, 50, 100, 250, 500, 1000, 2500} —
+>   *not* the ×7 (stages 1–4) / ×10 (5–8) scheme below. There is no per-stage `stepMult`.
+> - **Cost growth:** authored per-generator `r` **plus a global `costGrowthBump = +0.04`** applied at runtime
+>   (`effGrowth`); the r-table and worked examples below omit that bump.
+> - **Prestige:** **sqrt for all stages** (`floor(k·√(life/Csoft))`). The "log variant for late stages" (#7) was
+>   never implemented.
+> - **Ascension (LP):** exponent **0.33**, k = 5 (`ascensionGain`) — not the 0.40 quoted in sheet #11.
+> - **Cross-stage bindings:** Farm ← Village Labor `1 + √(laborOutput)`; Mine/Factory ← Grain `1 + 0.5·log10(1+Grain)`
+>   — not the `0.10·log10` / `0.08·log10` forms in #8.
+> - **Per-stage k / Csoft / fortuneWeight:** see the corrected tables below (every cell changed).
+
+This section captures the *original* numerical design for COG & COSMOS — The Fortune Engine. The shipped game draws its math from `src/systems/formulas.ts` and the per-stage defs (see the banner above); the formulas here document the design intent and the shape of each curve. Numbers use **`break_eternity.js`** (`Decimal`) throughout — chosen over `break_infinity.js` so values can exceed `~1e308` into the deep late game.
 
 ### Notation & Symbols
 
@@ -4832,7 +4849,7 @@ This section is the authoritative numerical contract for COG & COSMOS — The Fo
 | `base` | first-unit cost of a generator | `LP` | LEGACY POINTS (per-stage Ascension) |
 | `r` | cost growth ratio (1.07–1.15) | `Æ` | AETHER (Transcendence) |
 | `baseRate` | per-unit base output | `Ω` | OMEGA CORES (Reality Reset) |
-| `tierMult` | milestone multiplier (x7..x10) | `C` | soft-cap threshold |
+| `tierMult` | milestone multiplier (shipped: flat ×2) | `C` | soft-cap threshold |
 | `globalMult` | product of all active multipliers | `k` | prestige coefficient |
 | `surplus` | stage output siphoned by the Mill | `Δt` | elapsed seconds (offline) |
 
@@ -4955,31 +4972,35 @@ These tables instantiate the symbolic constants above for each of the eight SPEC
 
 #### Cost growth `r`, milestone step, and prestige coefficients
 
-| # | Stage | Primary | `r` | `stepMult` | `kStage` (prestige) | `Csoft` (prestige softcap) | Prestige currency |
-|---|---|---|---|---|---|---|---|
-| 1 | VILLAGE | Coins (¢) | 1.070 | x7 | 10 | 1e3 | Renown |
-| 2 | FARM | Grain | 1.081 | x7 | 10 | 1e4 | Heritage |
-| 3 | MINE | Ore | 1.093 | x7 | 8 | 1e5 | Depth |
-| 4 | FACTORY | Widgets | 1.104 | x7 | 8 | 1e6 | Patents |
-| 5 | MAGIC REALM | Mana | 1.115 | x10 | 6 | 1e8 | Insight |
-| 6 | SPACE | Stardust | 1.127 | x10 | 6 | 1e10 | Telemetry |
-| 7 | TIME | Chronons | 1.138 | x10 | 5 | 1e12 | Epoch |
-| 8 | MULTIVERSE | Shards | 1.150 | x10 | 5 | 1e14 | Convergence |
+> **Shipped values (post-v5-rebalance).** `stepMult` is now a flat **×2** for all stages (no per-stage step);
+> `r` shown is the *design-intent* anchor — the live game adds `+0.04` (`costGrowthBump`) to each generator's
+> authored `r`. `kStage` and `Csoft` below are the **actual** values from `src/data/stages/`.
 
-> `r` interpolates linearly: `r = 1.07 + 0.0114*(stageIndex-1)`. Stages 1–4 use the **sqrt** prestige formula (#6); stages 5–8 (Magic onward) switch to the **log** variant (#7) because `lifetimePrimary` routinely exceeds 1e15.
+| # | Stage | Primary | `r` (intent) | `stepMult` | `kStage` (shipped) | `Csoft` (shipped) | Prestige currency |
+|---|---|---|---|---|---|---|---|
+| 1 | VILLAGE | Coins (¢) | 1.070 | ×2 | 1 | 1e6 | Renown |
+| 2 | FARM | Grain | 1.081 | ×2 | 1 | 1e7 | Heritage |
+| 3 | MINE | Ore | 1.093 | ×2 | 1 | 1e8 | Depth |
+| 4 | FACTORY | Widgets | 1.104 | ×2 | 1 | 1e9 | Patents |
+| 5 | MAGIC REALM | Mana | 1.115 | ×2 | 12 | 1e6 | Insight |
+| 6 | SPACE | Stardust | 1.127 | ×2 | 8 | 5e7 | Telemetry |
+| 7 | TIME | Chronons | 1.138 | ×2 | 6 | 1e7 | Epoch |
+| 8 | MULTIVERSE | Shards | 1.150 | ×2 | 4 | 1e11 | Convergence |
+
+> The design intent was `r = 1.07 + 0.0114*(stageIndex-1)` with a sqrt→log prestige split; **the shipped game uses sqrt prestige for every stage** (`prestigeGain`, `floor(k·√(life/Csoft))`) — the log variant (#7) was never built. `kStage`/`Csoft` were hand-tuned in the rebalance and no longer follow a smooth curve.
 
 #### Fortune mint weights (the Mill's slot economy)
 
-| # | Stage | `fortuneWeight_s` | Rationale |
+| # | Stage | `fortuneWeight_s` (shipped) | Rationale |
 |---|---|---|---|
-| 1 | VILLAGE | 0.50 | earliest, abundant surplus -> lowest ★/unit |
-| 2 | FARM | 0.65 | feeds workers; moderate |
-| 3 | MINE | 0.85 | raw materials, scarcer |
-| 4 | FACTORY | 1.10 | refined widgets |
-| 5 | MAGIC REALM | 1.50 | arcane surplus is rarer |
+| 1 | VILLAGE | 1.0 | earliest, abundant surplus -> lowest ★/unit |
+| 2 | FARM | 1.2 | feeds workers; moderate |
+| 3 | MINE | 1.4 | raw materials, scarcer |
+| 4 | FACTORY | 1.6 | refined widgets |
+| 5 | MAGIC REALM | 1.75 | arcane surplus is rarer |
 | 6 | SPACE | 2.00 | requires Alloy chain input |
-| 7 | TIME | 3.00 | Chronon surplus is precious |
-| 8 | MULTIVERSE | 4.50 | apex weight; Shards mint the most ★ |
+| 7 | TIME | 2.25 | Chronon surplus is precious |
+| 8 | MULTIVERSE | 3.0 | apex weight; Shards mint the most ★ |
 
 > Because the mint takes `log10(1+surplus)`, doubling a stage's surplus adds only a fixed `log10(2)≈0.301` to its term — weights, not raw surplus, are the dominant lever. This is the **anti-inflation core**: no single stage can flood ★ by brute-forcing one currency.
 
@@ -5016,9 +5037,8 @@ Targets assume desktop play with a check-in every 30 min–2 h, offline filling 
  │ GENERATOR COSTS ........ exponential  base*r^n  (r=1.07-1.15)
  │ GENERATOR COUNT EFFECT . linear/milestone  n * stepMult^tiers
  │ CROSS-STAGE LINKS ...... logarithmic  1 + a*log10(1+x)   (anti-snowball)
- │ PRESTIGE (early) ....... sqrt   k*sqrt(life/Csoft)
- │ PRESTIGE (late) ........ log    k*5*log10(1+life/Csoft)
- │ ASCENSION (LP) ......... power  k*(life/C)^0.40   (harsher)
+ │ PRESTIGE (all stages) .. sqrt   k*sqrt(life/Csoft)   (shipped: sqrt everywhere; #7 log unused)
+ │ ASCENSION (LP) ......... power  k*(life/C)^0.33   (harsher; shipped k=5, exponent 0.33)
  │ TRANSCENDENCE (Æ) ...... log    5*log10(1+F/1e6)
  │ REALITY (Ω) ............ cbrt   (A/1e3)^(1/3)   (brutal)
  │ SOFT CAPS .............. sqrt -> log cascade
