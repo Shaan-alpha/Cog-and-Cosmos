@@ -485,4 +485,9 @@
     from { box-shadow: 0 0 4px var(--danger); }
     to { box-shadow: 0 0 16px var(--danger); }
   }
+
+  /* ── Mobile (≤ 720px): stack the 2-col settings + backup grids ── */
+  @media (max-width: 720px) {
+    .settings-grid, .backup-grid { grid-template-columns: 1fr; }
+  }
 </style>

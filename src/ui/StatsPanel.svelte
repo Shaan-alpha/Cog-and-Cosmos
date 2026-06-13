@@ -498,4 +498,11 @@
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0,0,0,0.5);
   }
+
+  /* ── Mobile (≤ 720px): scroll the 7-col table; stack the achievements summary ── */
+  @media (max-width: 720px) {
+    .stage-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .row { min-width: 600px; }
+    .ach-summary { grid-template-columns: 1fr; }
+  }
 </style>
