@@ -7,6 +7,7 @@
   import OmegaPanel from './OmegaPanel.svelte'
   import ChallengesPanel from './ChallengesPanel.svelte'
   import CollectionsPanel from './CollectionsPanel.svelte'
+  import EventBanner from './EventBanner.svelte'
   import SettingsPanel from './SettingsPanel.svelte'
   import StatsPanel from './StatsPanel.svelte'
   import { fortune, fmt, isStageUnlocked, transcendCount, transcendPreview, omegaCount, omegaPreview, completedChallenges, activeChallenge, anyStageAscended, collectedRelics, getToasts, removeToast } from '../stores/game.svelte'
@@ -52,6 +53,8 @@
       </div>
     {/each}
   </div>
+
+  <EventBanner />
 
   <!-- Masthead -->
   <header class="masthead">
