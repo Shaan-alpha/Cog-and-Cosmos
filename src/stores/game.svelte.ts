@@ -14,6 +14,7 @@ import { OMEGA_SKILLS } from '../data/skills/omega'
 import { CHALLENGE_SKILLS } from '../data/skills/challenge'
 import { CHALLENGES, CHALLENGE_BY_ID, type ChallengeRestriction } from '../data/challenges'
 import { RELICS, RELIC_BY_ID, type RelicRarity } from '../data/collections'
+import { EVENTS, EVENT_BY_ID } from '../data/events'
 import { ACHIEVEMENTS } from '../data/achievements'
 import { playTranscend } from '../systems/audio'
 import { D, ONE, ZERO, fmt as baseFmt, type Dec } from '../systems/Decimal'
@@ -292,7 +293,7 @@ export function assignBranchSlot(index: number, stageId: string): void {
 
 /** Effective global multiplier = skill-derived globalMult × baked-in Convergence multiplier. */
 function effGlobalMult(state: GameState = gs): Dec {
-  return state.globalMult.mul(state.convergenceMult ?? ONE).mul(D(restrictionFor(state)?.prodMult ?? 1))
+  return state.globalMult.mul(state.convergenceMult ?? ONE).mul(D(restrictionFor(state)?.prodMult ?? 1)).mul(D(state === gs ? eventBuffMult() : 1))
 }
 
 /** UI-facing list of a stage's incoming cross-stage bindings (may be empty). */
@@ -371,6 +372,54 @@ let offlineSummary = $state<string | null>(null)
 let activeToasts = $state<{ id: number; text: string }[]>([])
 let nextToastId = 0
 let achCheckTimer = 0
+
+// ── Events (claimable transient buffs) — runtime-only, not persisted ──────────
+const EVENT_MIN_GAP = 180, EVENT_MAX_GAP = 420, EVENT_CLAIM_WINDOW = 30
+type EventBuff = { id: string; mult: number; durationLeft: number }
+type PendingEvent = { id: string; timeLeft: number }
+function randGap() { return EVENT_MIN_GAP + Math.random() * (EVENT_MAX_GAP - EVENT_MIN_GAP) }
+let eventBuff = $state<EventBuff | null>(null)
+let pendingEvent = $state<PendingEvent | null>(null)
+let eventSpawnTimer = randGap()
+
+function spawnEvent() {
+  const def = EVENTS[Math.floor(Math.random() * EVENTS.length)]
+  pendingEvent = { id: def.id, timeLeft: EVENT_CLAIM_WINDOW }
+}
+
+/** Advance event timers one step. Exported (called by stepSim; also the test seam). */
+export function tickEvents(dt: number) {
+  if (eventBuff) {
+    const left = eventBuff.durationLeft - dt
+    eventBuff = left > 0 ? { ...eventBuff, durationLeft: left } : null
+  }
+  if (pendingEvent) {
+    const left = pendingEvent.timeLeft - dt
+    if (left > 0) pendingEvent = { ...pendingEvent, timeLeft: left }
+    else { pendingEvent = null; eventSpawnTimer = randGap() }
+  } else {
+    eventSpawnTimer -= dt
+    if (eventSpawnTimer <= 0) spawnEvent()
+  }
+}
+
+export function claimEvent(): boolean {
+  if (!pendingEvent) return false
+  const def = EVENT_BY_ID[pendingEvent.id]
+  if (!def) { pendingEvent = null; return false }
+  eventBuff = { id: def.id, mult: def.mult, durationLeft: def.duration }
+  pendingEvent = null
+  eventSpawnTimer = randGap()
+  pushToast(`⚡ ${def.name}! +${Math.round((def.mult - 1) * 100)}% production for ${def.duration}s`)
+  return true
+}
+
+export function activeEventBuff(): EventBuff | null { return eventBuff }
+export function claimableEvent(): PendingEvent | null { return pendingEvent }
+export function eventBuffMult(): number { return eventBuff?.mult ?? 1 }
+export function __forceSpawnEventForTest(id?: string) {
+  pendingEvent = { id: id ?? EVENTS[0].id, timeLeft: EVENT_CLAIM_WINDOW }
+}
 
 function checkAchievements(state: GameState): string[] {
   if (!state.unlockedAchievements) state.unlockedAchievements = []
@@ -490,6 +539,8 @@ function stepSim(dt: number) {
   } else {
     mvEchoSustain = 1
   }
+
+  tickEvents(dt)
 
   achCheckTimer += dt
   if (achCheckTimer >= 1.0) {
@@ -1567,7 +1618,7 @@ export function hardReset() {
 
 /** Test-only: reset the live store to a fresh game WITHOUT starting the rAF loop
  *  (keeps store integration tests deterministic). Not used in production. */
-export function __resetStoreForTest() { gs = freshGameState() }
+export function __resetStoreForTest() { gs = freshGameState(); eventBuff = null; pendingEvent = null; eventSpawnTimer = randGap() }
 
 export function isInitialized() { return initialized }
 

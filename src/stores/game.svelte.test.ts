@@ -7,6 +7,7 @@ import {
   activeChallenge, medals, completedChallenges,
   realityReset, transcend,
   prestigeStage, collectedRelics,
+  tickEvents, claimEvent, activeEventBuff, claimableEvent, eventBuffMult, __forceSpawnEventForTest,
 } from './game.svelte'
 
 // Store-layer integration tests: the snapshot-and-restore + reset paths
@@ -109,6 +110,29 @@ describe('transcend (Aether)', () => {
     expect(g.skills.spark).toBeUndefined()      // global tree wiped
     expect(g.skills['tr:wellspring']).toBe(2)   // Aether tree kept
     expect(g.skills['ch:proven']).toBe(2)       // Challenge tree kept
+  })
+})
+
+describe('Events — spawn / claim / decay', () => {
+  it('force-spawn makes an event claimable; claiming applies the buff', () => {
+    __forceSpawnEventForTest('golden_cog')
+    expect(claimableEvent()?.id).toBe('golden_cog')
+    expect(claimEvent()).toBe(true)
+    expect(activeEventBuff()?.id).toBe('golden_cog')
+    expect(claimableEvent()).toBe(null)
+    expect(eventBuffMult()).toBeCloseTo(3, 9)   // golden_cog mult
+  })
+  it('the buff decays to nothing after its duration', () => {
+    __forceSpawnEventForTest('golden_cog')      // duration 30
+    claimEvent()
+    tickEvents(31)
+    expect(activeEventBuff()).toBe(null)
+    expect(eventBuffMult()).toBe(1)
+  })
+  it('an unclaimed event expires after the claim window', () => {
+    __forceSpawnEventForTest('golden_cog')
+    tickEvents(31)                              // > CLAIM_WINDOW (30)
+    expect(claimableEvent()).toBe(null)
   })
 })
 
