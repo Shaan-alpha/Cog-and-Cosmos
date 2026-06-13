@@ -1,0 +1,26 @@
+{
+  "name": "cog-and-cosmos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.0.0",
+    "vite-plugin-pwa": "^1.3.0"
+  },
+  "dependencies": {
+    "break_eternity.js": "^2.1.3",
+    "idb-keyval": "^6.2.1",
+    "lz-string": "^1.5.0",
+    "pixi.js": "^8.0.0"
+  }
+}
