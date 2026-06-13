@@ -172,6 +172,7 @@
   .tr-row { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; }
   @media (max-width: 900px) {
     .tr-row { grid-template-columns: 1fr; }
+    .altar-grid { grid-template-columns: 1fr; }
   }
 
   .tr-altar { padding: 16px; display: flex; flex-direction: column; gap: 14px; border-color: var(--line); }

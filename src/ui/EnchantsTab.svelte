@@ -168,6 +168,7 @@
   .enchants-tab { display: flex; flex-direction: column; gap: 16px; }
   .active-list { padding: 12px 14px; background: var(--ink-850); }
   .active-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 720px) { .active-grid { grid-template-columns: 1fr; } }
   .active-enc-card {
     padding: 8px 11px; background: var(--ink-900); border-color: var(--sc);
     display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden;
