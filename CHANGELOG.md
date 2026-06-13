@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Phase 3: Reality Reset (Ω) meta-layer · Save v12
+- **Reality Reset (Ω)** — the fourth and final meta-prestige layer, above Transcendence. A brutal
+  global reset that mints **Omega (Ω)** from all-time Aether (`floor(cbrt(aetherLifetime/1e3) · (1+0.15·L))`),
+  granting a permanent **+10% to both global production and ★ mint per Ω**. Wipes the live game **and** the
+  Aether pool + transcend count; keeps the Aether tree, `aetherLifetime`, `fortuneAllTime`, and the Ω layer.
+- **Reality (Ω) tree** ([omega.ts](./src/data/skills/omega.ts)) — 4 nodes (Reality Foundation +50%/lvl global,
+  Reality Multiplier +15% Ω gain/lvl, Mint Resonance +50%/lvl mint, Eternal Engine — persist autobuyers +
+  Engine slots through the reset). Folds into the same `recomputeUpgrades()` pass, so it's save-safe.
+- **Reality Reset view** ([OmegaPanel.svelte](./src/ui/OmegaPanel.svelte)) — gated `Ω Reality` SPA view with
+  the collapse altar (lost/kept), gain preview, and the Ω tree.
+- **Save Version v12** — additive migration seeding `omega`, `omegaLifetime`, `omegaCount` (no reset).
+
 ### Changed — Codebase audit: toolchain upgrade, test suite & structural refactor
 A full audit/refine pass. No gameplay or balance changes — behaviour is pinned by a
 new test suite and verified unchanged throughout.

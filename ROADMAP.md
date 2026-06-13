@@ -46,7 +46,7 @@ Legend: ✅ done · 🔨 in progress · 🔜 next · 📦 planned
 - ✅ **Transcendence** (Aether Æ) layer and LP/upgrade tree resets
 - ✅ **Achievements** (20 normal/hidden milestones + global output boosts)
 - ✅ **QoL & UI Refinements**: Multi-stack Toast Notification Bus, Statistics sub-tabs, and major Decimal allocation performance optimizations
-- 📦 Reality Reset (Omega Ω) meta layer
+- ✅ **Reality Reset** (Omega Ω) meta layer — the prestige stack is now complete (Prestige → Ascension → Transcendence → Reality Reset)
 - 📦 Events (seasonal, random encounters, rare bosses, mini-games)
 - 📦 Collections (relics/pets/artifacts/cards) + set bonuses
 - 📦 Challenges (restriction/time/endless)

@@ -20,7 +20,8 @@ auto-buyers (cheapest + smart-priority modes), a Statistics panel + an **Achieve
 **Ascension** meta-layer (deep reset → **Legacy Points** + an LP tree) and the **Transcendence** meta-layer
 (deeper reset → **Aether Æ** + an Æ tree), a stacking toast notification bus, an installable **PWA**, an
 **SPA** Stages/Skills/Ascension/Transcendence/Stats/Settings view switch, offline progress, autosave, and
-synthesized SFX. The remaining meta-prestige layer (Reality Reset Ω) is still on the roadmap.
+synthesized SFX. All four prestige tiers are live: Prestige → Ascension (Legacy Points) → Transcendence
+(Aether Æ) → **Reality Reset (Omega Ω)** (deepest reset → Omega; +10%/Ω to global production & ★ mint + an Ω tree).
 
 ## Tech stack
 
@@ -112,6 +113,7 @@ src/
 │   ├── skills/local.ts     Per-stage local upgrade trees (Magic/Space/Time/Multiverse, prestige-gated)
 │   ├── skills/ascension.ts Ascension meta tree (6 nodes, spent in Legacy Points)
 │   ├── skills/transcendence.ts Transcendence meta tree (4 nodes, spent in Aether Æ)
+│   ├── skills/omega.ts     Reality (Ω) meta tree (4 nodes, spent in Omega)
 │   └── achievements.ts     20 achievements (17 visible, 3 secret) → compounding global output boosts
 ├── systems/                Pure game core — NO Svelte imports here.
 │   ├── Decimal.ts          break_eternity wrapper. Import Decimal/D/ZERO/ONE/fmt ONLY from here.
@@ -121,11 +123,11 @@ src/
 │   ├── FortuneEngine.ts    mints ★ from stage surpluses; manages 8 slots.
 │   ├── skills.ts           skill cost / prereqs / recomputeUpgrades() (derives globalMult + engineMult)
 │   ├── audio.ts            synthesized Web-Audio SFX (no files): playBuy/playMilestone/playPrestige + mute
-│   └── SaveManager.ts      IndexedDB+localStorage, lz-string, versioned migrate() (currently v11)
+│   └── SaveManager.ts      IndexedDB+localStorage, lz-string, versioned migrate() (currently v12)
 ├── stores/
 │   └── game.svelte.ts      the ONE reactive store + the 20 Hz fixed-step loop. Bridges systems ↔ UI.
 ├── ui/                     Svelte components — render-only, read store accessors.
-│   ├── GameLayout.svelte   shell: masthead, view switch (Stages/Skills/Ascension/Transcendence/Stats/Settings), dial bar, 3-col deck, stacking toast bus
+│   ├── GameLayout.svelte   shell: masthead, view switch (Stages/Skills/Ascension/Transcendence/Omega/Stats/Settings), dial bar, 3-col deck, stacking toast bus
 │   ├── StatsPanel.svelte   Statistics view: playtime, ★ totals/rate, global mult, per-stage live table + 🏆 Achievements sub-tab
 │   ├── StagePanel.svelte   generic per-stage panel (generators, rates, binding badges, prestige); hosts the stage-twist tabs ↓
 │   ├── EnchantsTab.svelte  Magic tab: active enchant slots + casting dashboard
@@ -135,6 +137,7 @@ src/
 │   ├── SkillTree.svelte    Global Skill Tree view (spend ★)
 │   ├── AscensionPanel.svelte   Ascension view: per-stage deep-reset cards + Legacy-Point meta tree
 │   ├── TranscendencePanel.svelte  Transcendence view: Aether Æ altar (deeper reset → Æ) + Æ tree
+│   ├── OmegaPanel.svelte   Reality Reset view: Omega Ω collapse altar (deepest reset → Ω) + Ω tree
 │   ├── SettingsPanel.svelte    Settings view: export/import, hard reset, number-format toggle, mute
 │   ├── OnboardingTooltip.svelte    "new system" onboarding hints
 │   └── OfflineSummary.svelte
@@ -171,7 +174,11 @@ Svelte re-renders UI → Pixi reads the same state each frame.
   folds into the *same* `recomputeUpgrades()` pass as the ★ and LP trees. `transcendPreview()` drives the UI.
 - **Achievements** — `checkAchievements()` (once per frame) evaluates the predicates in `data/achievements.ts`;
   newly-unlocked IDs land in `unlockedAchievements`, compound a small global output multiplier, and push a 🏆 toast.
-- **SPA views** — `view` state in `GameLayout` swaps Stages ↔ Skills ↔ Ascension ↔ Transcendence ↔ Stats ↔ Settings, no reload.
+- **Reality Reset layer** — `realityReset()` is the deepest reset (above Transcendence): it wipes the live game
+  *and* the Aether pool + `transcendCount` to mint **Omega (Ω)** via `omegaGain()` (cube-root of `aetherLifetime`),
+  keeping the Æ tree. Its 4-node Ω tree (`buyOmegaSkill()`) folds into `recomputeUpgrades()`, and `1 + 0.10·Ω`
+  multiplies *both* `globalMult` and `engine.engineMult`. `omegaPreview()` drives the UI.
+- **SPA views** — `view` state in `GameLayout` swaps Stages ↔ Skills ↔ Ascension ↔ Transcendence ↔ Omega ↔ Stats ↔ Settings, no reload.
 - **Auto-buyer** — per-stage `autoBuy` flag (unlocks after a stage's first prestige). `stepSim()` calls
   `economy.autoBuyTick()` once per step. Two modes (`autoBuyMode`: `'cheapest' | 'priority'`) — the smart
   ΔRate/cost **priority** mode unlocks at first Ascension, with a spend reserve and a per-generator vault.
@@ -205,7 +212,7 @@ Svelte re-renders UI → Pixi reads the same state each frame.
    components — use `var(--brass)`, `var(--ink-800)`, the per-stage `--sc` accent, etc.
    Fonts: `--font-display` (Silkscreen), `--font-mono` (Spline Sans Mono), `--font-flavor` (Newsreader).
 
-7. **Saves are versioned (currently v11).** If you change the `GameState` shape, bump
+7. **Saves are versioned (currently v12).** If you change the `GameState` shape, bump
    `CURRENT_VERSION` in `SaveManager.ts` and add a migration step in `migrate()`. `Decimal` values
    serialize via the `{ __decimal__: "..." }` wrapper — keep that working. Derived values
    (`globalMult`, `engineMult`) are **recomputed on load** from skills, not trusted from the save.

@@ -18,7 +18,7 @@ smart-priority modes), a Statistics panel + an **Achievements** system, offline 
 synthesized SFX. Shipped as an **installable PWA** (offline-capable) and an **SPA** (one persistent runtime;
 a Stages/Skills/Ascension/Transcendence/Stats/Settings view switch, never a page reload). The **Ascension**
 (deep reset → Legacy Points + LP tree) and **Transcendence** (deeper reset → Aether Æ + Æ tree) meta-layers
-are both live; only the **Reality Reset (Ω)** meta layer is still roadmap.
+are both live, as is the top tier — **Reality Reset (Ω)** (deepest reset → Omega; +10%/Ω to global & mint + an Ω tree). All four prestige tiers now ship: Prestige → Ascension → Transcendence → Reality Reset.
 
 **Architecture is deliberate — don't undo:** SPA (not MPA) because the game is a continuous loop +
 live state; browser-first **PWA** (native Tauri/Capacitor wrappers are post-launch only).

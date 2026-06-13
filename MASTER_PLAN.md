@@ -4957,10 +4957,14 @@ This section captures the *original* numerical design for COG & COSMOS — The F
   aetherMillBonus = 1 + 0.05 * totalAether     // +5% Fortune mint per Æ
 
 ----[ 13. REALITY RESET (Ω, top layer) ]----------------------
-  // resets everything incl. Æ. Cube-root for brutal, deliberate pacing.
+  // resets everything incl. the Æ POOL (keeps the Æ tree). Cube-root for brutal pacing.
   Omega_gain   = floor( ( totalAetherEverEarned / 1e3 )^(1/3) )
   Ω_QoLmult    = 1 + 0.10 * totalOmega         // +10% global & mint per Ω
   // Ω also unlocks New-Game+ modifiers (permanent, survive all resets).
+  // SHIPPED (v12): Omega = floor( cbrt(aetherLifetime/1e3) * (1 + 0.15*L) )  where
+  //   L = om:reality_multiplier level; the +10%/Ω bonus multiplies BOTH globalMult and
+  //   engineMult (see systems/skills.ts recomputeUpgrades + systems/formulas.ts omegaGain).
+  //   New-Game+ modifiers are deferred (not in v1).
 ================================================================
 ```
 
