@@ -7,7 +7,7 @@ import type { GameState } from '../data/types'
 // the Decimal serialise/deserialise round-trip. These guard against precision
 // loss and dropped fields when the save schema or migrate() are touched.
 
-const CURRENT_VERSION = 13
+const CURRENT_VERSION = 14
 
 describe('migrate: version ladder', () => {
   it('upgrades a v5 save to the current version, adding all later fields', () => {
@@ -30,6 +30,7 @@ describe('migrate: version ladder', () => {
     expect(out.medals).toBe(0)
     expect(out.completedChallenges).toEqual([])
     expect(out.activeChallenge).toBe(null)
+    expect(out.collectedRelics).toEqual([])
     const v = out.stages.village as any
     expect(v.ascensionCount).toBe(0)
     expect(v.autoBuyMode).toBe('cheapest')
@@ -75,6 +76,13 @@ describe('migrate: version ladder', () => {
     expect(out.version).toBe(CURRENT_VERSION)
     expect(out.medals).toBe(4)
     expect(out.completedChallenges).toEqual(['spartan_cogs'])
+  })
+
+  it('v13 → v14 seeds collectedRelics and preserves existing', () => {
+    const raw = { version: 13, collectedRelics: ['rl_brass_cog'], stages: {} } as unknown as GameState
+    const out = migrate(raw)
+    expect(out.version).toBe(CURRENT_VERSION)
+    expect(out.collectedRelics).toEqual(['rl_brass_cog'])
   })
 
   it('never lets convergenceMult sanitise to zero (would null all production)', () => {

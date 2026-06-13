@@ -123,6 +123,7 @@ export interface GameState {
   completedChallenges?: string[] // ids cleared (permanent; gates roster, prevents double reward)
   activeChallenge?: string | null // id of the in-progress restricted run, else null
   challengeSnapshot?: string     // compressed real-save blob, present ONLY during a challenge run
+  collectedRelics?: string[]     // relic ids collected — permanent meta, survives every reset
   unlockedAchievements?: string[] // list of unlocked achievement IDs
   settings: {
     numberFormat: 'short' | 'scientific' | 'engineering'
