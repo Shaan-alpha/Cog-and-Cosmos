@@ -47,7 +47,7 @@ Legend: ✅ done · 🔨 in progress · 🔜 next · 📦 planned
 - ✅ **Achievements** (20 normal/hidden milestones + global output boosts)
 - ✅ **QoL & UI Refinements**: Multi-stack Toast Notification Bus, Statistics sub-tabs, and major Decimal allocation performance optimizations
 - ✅ **Reality Reset** (Omega Ω) meta layer — the prestige stack is now complete (Prestige → Ascension → Transcendence → Reality Reset)
-- 📦 Events (seasonal, random encounters, rare bosses, mini-games)
+- 🔨 **Events** — v1 live: claimable random-encounter production buffs; 📦 seasonal / bosses / mini-games deferred
 - ✅ **Collections** (18 relics that drop on resets → passive bonuses + rarity-set bonuses)
 - ✅ **Challenges** (restricted runs → Medals + a Trial tree) — restriction runs live; time/endless deferred
 - ✅ **Mobile/touch UX** (responsive shell + ≥44px touch targets + safe-area); 📦 encyclopedia deferred

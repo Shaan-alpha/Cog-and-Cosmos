@@ -120,7 +120,8 @@ src/
 │   ├── skills/challenge.ts Challenge (Medal) tree (4 nodes, spent in Medals)
 │   ├── achievements.ts     20 achievements (17 visible, 3 secret) → compounding global output boosts
 │   ├── challenges.ts       4 restricted-run defs (restriction + goal + Medal reward)
-│   └── collections.ts      18 relic defs (4 rarity tiers) + rarity-set bonuses
+│   ├── collections.ts      18 relic defs (4 rarity tiers) + rarity-set bonuses
+│   └── events.ts           claimable-event defs (transient production buffs)
 ├── systems/                Pure game core — NO Svelte imports here.
 │   ├── Decimal.ts          break_eternity wrapper. Import Decimal/D/ZERO/ONE/fmt ONLY from here.
 │   ├── formulas.ts         ALL balancing math (pure). Mirrors MASTER_PLAN §17.
@@ -146,6 +147,7 @@ src/
 │   ├── OmegaPanel.svelte   Reality Reset view: Omega Ω collapse altar (deepest reset → Ω) + Ω tree
 │   ├── ChallengesPanel.svelte  Challenges view: roster + active-run banner + Medal (Trial) tree
 │   ├── CollectionsPanel.svelte  Collections view: relic grid by rarity tier + set completion
+│   ├── EventBanner.svelte  claim banner + active-buff pill overlay (no view)
 │   ├── SettingsPanel.svelte    Settings view: export/import, hard reset, number-format toggle, mute
 │   ├── OnboardingTooltip.svelte    "new system" onboarding hints
 │   └── OfflineSummary.svelte
@@ -190,6 +192,9 @@ Svelte re-renders UI → Pixi reads the same state each frame.
 - **Collections** — relics drop via `grantDrop(rarity, chance)` (guaranteed centrepiece first, then random uncollected)
   hooked into `prestigeStage`/`ascendStage`/`transcend`/`realityReset`/`maybeCompleteChallenge`; `collectedRelics`
   is permanent (survives every reset) and its relic + rarity-set bonuses fold into `recomputeUpgrades()`.
+- **Events** — `tickEvents(dt)` (per `stepSim`) spawns a claimable event on a random interval; `claimEvent()` sets a
+  transient `eventBuff` (module `$state`, **runtime-only — not persisted**) that folds into `effGlobalMult` and decays
+  each tick. No save/migration/recompute impact.
 - **Challenges** — `enterChallenge()` stashes the real save (`exportSave`) and swaps `gs` to a fresh restricted run;
   `maybeCompleteChallenge()` (called from `checkUnlocks`) restores it (`importSave`) and credits **Medals** on the
   real save. `activeChallengeRestriction()` gates auto-buy / bindings / `prodMult` / prestige at their hook points;

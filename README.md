@@ -68,6 +68,7 @@ a **Global Skill Tree**, per-stage auto-buyers, a Statistics panel, and an insta
 | **Challenges (restricted runs → Medals 🎖️ + Trial tree)** | ✅ live |
 | **Mobile / touch UX (responsive layout, ≥44px targets, safe-area)** | ✅ live |
 | **Collections (18 relics, rarity sets, drop on resets)** | ✅ live |
+| **Events (claimable random-encounter production buffs)** | ✅ live |
 
 ---
 

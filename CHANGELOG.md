@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Phase 3: Events (claimable buffs)
+- **Events** — every few minutes of active play a claimable "Golden Cog"-style event appears; claiming it
+  grants a transient **global-production buff** (e.g. +200% for 30s, +400% for 15s) that folds live into
+  `effGlobalMult` and decays each tick. Spawns on a random 3–7 min interval with a 30s claim window.
+- **EventBanner** ([EventBanner.svelte](./src/ui/EventBanner.svelte)) — a claim banner + an active-buff pill,
+  rendered as shell overlays (no nav view).
+- Entirely **runtime-only** — no save-schema change, no migration, no `recomputeUpgrades`. (Offline doesn't
+  spawn events; buffs don't persist across reload.)
+
 ### Added — Phase 3: Collections (relics) · Save v14
 - **Collections** — 18 collectible relics across four rarity tiers that **drop as you reset**: prestige →
   Common, ascension/challenge-clear → Uncommon, transcendence → Rare, reality-reset → Legendary (each tier's
