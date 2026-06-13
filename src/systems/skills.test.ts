@@ -38,4 +38,11 @@ describe('recomputeUpgrades — Omega fold', () => {
     expect(gs.globalMult.toNumber()).toBeCloseTo(1.5, 9)
     expect(gs.engine.engineMult.toNumber()).toBeCloseTo(1.8, 9)
   })
+  it('folds the Challenge tree (ch:*) into globalMult and engineMult', () => {
+    const gs = makeState({ skills: { 'ch:proven': 2, 'ch:tempered': 1 } })
+    recomputeUpgrades(gs)
+    // ch:proven +0.25*2 = global ×1.5 ; ch:tempered +0.25*1 = engine ×1.25
+    expect(gs.globalMult.toNumber()).toBeCloseTo(1.5, 9)
+    expect(gs.engine.engineMult.toNumber()).toBeCloseTo(1.25, 9)
+  })
 })

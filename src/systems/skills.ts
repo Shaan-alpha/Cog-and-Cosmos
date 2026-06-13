@@ -7,6 +7,7 @@ import { GLOBAL_SKILLS, type SkillNode } from '../data/skills/global'
 import { ASCENSION_SKILLS } from '../data/skills/ascension'
 import { TRANSCENDENCE_SKILLS } from '../data/skills/transcendence'
 import { OMEGA_SKILLS } from '../data/skills/omega'
+import { CHALLENGE_SKILLS } from '../data/skills/challenge'
 import { ACHIEVEMENTS } from '../data/achievements'
 import type { GameState } from '../data/types'
 
@@ -24,6 +25,10 @@ export const TRANSCEND_BY_ID: Record<string, SkillNode> = Object.fromEntries(
 
 export const OMEGA_BY_ID: Record<string, SkillNode> = Object.fromEntries(
   OMEGA_SKILLS.map(n => [n.id, n]),
+)
+
+export const CHALLENGE_SKILL_BY_ID: Record<string, SkillNode> = Object.fromEntries(
+  CHALLENGE_SKILLS.map(n => [n.id, n]),
 )
 
 /** ★ cost to buy the next level of a node at the given current level. */
@@ -46,7 +51,7 @@ export function recomputeUpgrades(gs: GameState): void {
   let engine = 1
   // ★-spent Global, LP-spent Ascension, and Æ-spent Transcendence trees fold into the same
   // derived multipliers.
-  for (const node of [...GLOBAL_SKILLS, ...ASCENSION_SKILLS, ...TRANSCENDENCE_SKILLS, ...OMEGA_SKILLS]) {
+  for (const node of [...GLOBAL_SKILLS, ...ASCENSION_SKILLS, ...TRANSCENDENCE_SKILLS, ...OMEGA_SKILLS, ...CHALLENGE_SKILLS]) {
     const lvl = gs.skills[node.id] ?? 0
     if (lvl <= 0) continue
     const factor = 1 + node.effectPerLevel * lvl
