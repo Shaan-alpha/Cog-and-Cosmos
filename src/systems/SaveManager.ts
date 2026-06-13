@@ -8,7 +8,7 @@ import type { GameState } from '../data/types'
 import { D, Decimal } from './Decimal'
 
 const SAVE_KEY = 'cog_cosmos_save'
-const CURRENT_VERSION = 12
+const CURRENT_VERSION = 13
 // Saves older than this predate the v5 economy rebalance (milestone ×8→×2, steeper
 // cost growth). Their banked currency was earned on the old runaway curve, so they
 // are intentionally discarded on load rather than migrated — a clean slate on the
@@ -180,6 +180,13 @@ export function migrate(raw: GameState): GameState {
     if (raw.omegaLifetime === undefined) raw.omegaLifetime = 0
     if (raw.omegaCount === undefined) raw.omegaCount = 0
     raw.version = 12
+  }
+  // v12 → v13: Challenges system (Medals, completed set, active-run marker) — additive.
+  if (raw.version < 13) {
+    if (raw.medals === undefined) raw.medals = 0
+    if (raw.completedChallenges === undefined) raw.completedChallenges = []
+    if (raw.activeChallenge === undefined) raw.activeChallenge = null
+    raw.version = 13
   }
   raw.version = CURRENT_VERSION
   return sanitizeState(raw)

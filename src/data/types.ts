@@ -119,6 +119,10 @@ export interface GameState {
   omega?: number            // Omega (Ω) pool — minted by Reality Reset; drives the +10%/Ω passive mult
   omegaLifetime?: number    // total Omega ever earned (drives the per-reset increment)
   omegaCount?: number       // number of Reality Resets performed
+  medals?: number               // Challenge currency — spent on the Challenge (ch:*) tree
+  completedChallenges?: string[] // ids cleared (permanent; gates roster, prevents double reward)
+  activeChallenge?: string | null // id of the in-progress restricted run, else null
+  challengeSnapshot?: string     // compressed real-save blob, present ONLY during a challenge run
   unlockedAchievements?: string[] // list of unlocked achievement IDs
   settings: {
     numberFormat: 'short' | 'scientific' | 'engineering'
