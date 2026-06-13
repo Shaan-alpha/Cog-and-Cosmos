@@ -28,6 +28,13 @@
   const canSeeChallenges = $derived(!!activeChallenge() || completedChallenges().length > 0 || anyStageAscended())
   const toasts = $derived(getToasts())
 
+  // Mobile: keep the active view button centred in the horizontally-scrollable nav strip.
+  let navEl = $state<HTMLElement | null>(null)
+  $effect(() => {
+    void view
+    navEl?.querySelector('.view-btn.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+  })
+
   function selectStage(id: string) {
     if (isStageUnlocked(id)) activeStage = id
   }
@@ -56,7 +63,7 @@
       </div>
     </div>
 
-    <nav class="view-nav">
+    <nav class="view-nav" bind:this={navEl}>
       <button class="view-btn {view === 'stages' ? 'active' : ''}" onclick={() => view = 'stages'}>🏛 Stages</button>
       <button class="view-btn {view === 'skills' ? 'active' : ''}" onclick={() => view = 'skills'}>✦ Skills</button>
       <button class="view-btn {view === 'ascension' ? 'active' : ''}" onclick={() => view = 'ascension'}>🜲 Ascension</button>
@@ -354,5 +361,37 @@
     background: linear-gradient(180deg, var(--ink-800), var(--ink-850));
     border-left: 1px solid var(--brass-deep);
     animation: rise-in 0.55s var(--ease-out) 0.2s both;
+  }
+
+  /* ── Mobile (≤ 720px) ──────────────────────────────────────────────────── */
+  @media (max-width: 720px) {
+    /* slim masthead; the view-nav wraps to its own full-width scroll strip */
+    .masthead { flex-wrap: wrap; padding: 6px 12px; padding-top: max(6px, var(--safe-top)); row-gap: 6px; }
+    .brand-cog { width: 26px; height: 26px; }
+    .brand-sub { display: none; }
+    .brand { order: 0; }
+    .mast-right { order: 1; }
+    .view-nav {
+      order: 2; width: 100%; overflow-x: auto; overflow-y: hidden;
+      border-radius: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .view-nav::-webkit-scrollbar { display: none; }
+    .view-btn { padding: 0 14px; white-space: nowrap; flex: 0 0 auto; }
+    .fr-label { display: none; }
+    .fortune-readout { padding: 4px 10px; }
+
+    /* dials: keep the existing horizontal scroll, size for touch */
+    .dial { min-width: 76px; padding: 6px 12px; flex: 0 0 auto; }
+
+    /* deck: single scrollable column — StagePanel → Engine → slim Pixi strip */
+    .content { flex-direction: column; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: var(--safe-bottom); }
+    .stage-col  { order: 0; flex: 0 0 auto; overflow-y: visible; }
+    .engine-col { order: 1; width: 100%; flex: 0 0 auto; border-left: none; border-top: 1px solid var(--brass-deep); overflow-y: visible; }
+    .viewport-col { order: 2; width: 100%; height: 120px; flex: 0 0 auto; }
+  }
+
+  /* ── Compact (≤ 480px): drop the decorative Pixi viewport ──────────────── */
+  @media (max-width: 480px) {
+    .viewport-col { display: none; }
   }
 </style>
