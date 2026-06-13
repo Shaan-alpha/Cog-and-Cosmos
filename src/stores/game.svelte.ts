@@ -6,11 +6,13 @@ import { StageEconomy } from '../systems/StageEconomy'
 import { FortuneEngine } from '../systems/FortuneEngine'
 import { saveGame, loadGame, exportSave, importSave, consumeRebalanceReset } from '../systems/SaveManager'
 import { offlineGain, omegaGain } from '../systems/formulas'
-import { recomputeUpgrades, skillCost, prereqsMet, SKILL_BY_ID, ASCENSION_BY_ID, TRANSCEND_BY_ID, OMEGA_BY_ID } from '../systems/skills'
+import { recomputeUpgrades, skillCost, prereqsMet, SKILL_BY_ID, ASCENSION_BY_ID, TRANSCEND_BY_ID, OMEGA_BY_ID, CHALLENGE_SKILL_BY_ID } from '../systems/skills'
 import { GLOBAL_SKILLS } from '../data/skills/global'
 import { ASCENSION_SKILLS } from '../data/skills/ascension'
 import { TRANSCENDENCE_SKILLS } from '../data/skills/transcendence'
 import { OMEGA_SKILLS } from '../data/skills/omega'
+import { CHALLENGE_SKILLS } from '../data/skills/challenge'
+import { CHALLENGES, CHALLENGE_BY_ID, type ChallengeRestriction } from '../data/challenges'
 import { ACHIEVEMENTS } from '../data/achievements'
 import { playTranscend } from '../systems/audio'
 import { D, ONE, ZERO, fmt as baseFmt, type Dec } from '../systems/Decimal'
@@ -86,6 +88,9 @@ function freshGameState(): GameState {
     omega: 0,
     omegaLifetime: 0,
     omegaCount: 0,
+    medals: 0,
+    completedChallenges: [],
+    activeChallenge: null,
     settings: {
       numberFormat: 'short',
       autoSaveInterval: 30_000,
@@ -118,6 +123,17 @@ export function aetherLifetime() { return gs.aetherLifetime ?? 0 }
 export function omega() { return gs.omega ?? 0 }
 export function omegaLifetime() { return gs.omegaLifetime ?? 0 }
 export function omegaCount() { return gs.omegaCount ?? 0 }
+export function medals() { return gs.medals ?? 0 }
+export function completedChallenges() { return gs.completedChallenges ?? [] }
+export function activeChallenge() { return gs.activeChallenge ?? null }
+export function anyStageAscended() { return Object.values(gs.stages).some(s => (s.ascensionCount ?? 0) >= 1) }
+
+/** The restriction of the active challenge for a given state (null when not in a challenge). */
+function restrictionFor(state: GameState): ChallengeRestriction | null {
+  const id = state.activeChallenge
+  return id ? (CHALLENGE_BY_ID[id]?.restriction ?? null) : null
+}
+export function activeChallengeRestriction(): ChallengeRestriction | null { return restrictionFor(gs) }
 export function transcendCount() { return gs.transcendCount ?? 0 }
 export function fortuneAllTime() { return gs.fortuneAllTime ?? ZERO }
 
@@ -182,6 +198,7 @@ function bindingMultFor(
 ): Dec {
   const rules = STAGE_BINDINGS[stageId]
   const live = stages === gs.stages
+  if (live && activeChallengeRestriction()?.noBindings) return ONE   // challenge: bindings severed
   // Multiverse duplication is a LIVE-only broadcast (offline approximates without it).
   const dup = live ? duplicationMultFor(stageId) : ONE
   if (!rules) return dup
@@ -241,7 +258,7 @@ export function assignBranchSlot(index: number, stageId: string): void {
 
 /** Effective global multiplier = skill-derived globalMult × baked-in Convergence multiplier. */
 function effGlobalMult(state: GameState = gs): Dec {
-  return state.globalMult.mul(state.convergenceMult ?? ONE)
+  return state.globalMult.mul(state.convergenceMult ?? ONE).mul(D(restrictionFor(state)?.prodMult ?? 1))
 }
 
 /** UI-facing list of a stage's incoming cross-stage bindings (may be empty). */
@@ -381,7 +398,7 @@ function stepSim(dt: number) {
       gs.spaceBuffers
     )
     // Auto-buyer: one purchase per step (cheapest or smart priority), once the stage has prestiged.
-    if (st.autoBuy && st.prestigeCount >= 1) {
+    if (st.autoBuy && st.prestigeCount >= 1 && !activeChallengeRestriction()?.noAutoBuy) {
       economy.autoBuyTick(
         st,
         eff,
@@ -567,6 +584,7 @@ export function convergenceMult(): Dec { return gs.convergenceMult ?? ONE }
 
 /** Runtime unlock conditions. Cheap — runs once per animation frame. */
 function checkUnlocks() {
+  if (gs.activeChallenge && maybeCompleteChallenge()) return  // completed + restored this frame
   const startBoostLvl = gs.skills['tr:start_boost'] ?? 0
   const boostAmt = startBoostLvl > 0 ? D(Math.pow(10, 2 * startBoostLvl)) : ZERO
 
@@ -705,6 +723,7 @@ export function buyGenerator(stageId: string, genId: string, amount: 1 | 10 | 10
 }
 
 export function prestigeStage(stageId: string): number {
+  if (activeChallengeRestriction()?.noPrestige) return 0   // challenge: prestige disabled
   const economy = STAGE_ECONOMIES[stageId]
   const st = gs.stages[stageId]
   if (!economy || !st) return 0
@@ -942,7 +961,7 @@ export function buyAscensionSkill(id: string): boolean {
   return true
 }
 
-export { GLOBAL_SKILLS, ASCENSION_SKILLS, TRANSCENDENCE_SKILLS, OMEGA_SKILLS }
+export { GLOBAL_SKILLS, ASCENSION_SKILLS, TRANSCENDENCE_SKILLS, OMEGA_SKILLS, CHALLENGE_SKILLS, CHALLENGES, CHALLENGE_BY_ID }
 
 // ── Transcendence meta-reset (spend ★ all-time for Aether) ───────────────────
 export function transcSkillCostFor(id: string): number {
@@ -1059,9 +1078,9 @@ export function transcend(): boolean {
   // Reset LP
   gs.legacyPoints = 0
 
-  // Wipe global and ascension skills, retain Aether skills
+  // Wipe global and ascension skills, retain Aether + Challenge (Medal) skills
   const nextSkills: Record<string, number> = {}
-  for (const node of TRANSCENDENCE_SKILLS) {
+  for (const node of [...TRANSCENDENCE_SKILLS, ...CHALLENGE_SKILLS]) {
     const lvl = gs.skills[node.id] ?? 0
     if (lvl > 0) nextSkills[node.id] = lvl
   }
@@ -1192,9 +1211,9 @@ export function realityReset(): boolean {
   // Reset LP
   gs.legacyPoints = 0
 
-  // Wipe Global + Ascension skills; KEEP Aether (tr:*) AND Omega (om:*) trees
+  // Wipe Global + Ascension skills; KEEP Aether (tr:*), Omega (om:*) AND Challenge (ch:*) trees
   const nextSkills: Record<string, number> = {}
-  for (const node of [...TRANSCENDENCE_SKILLS, ...OMEGA_SKILLS]) {
+  for (const node of [...TRANSCENDENCE_SKILLS, ...OMEGA_SKILLS, ...CHALLENGE_SKILLS]) {
     const lvl = gs.skills[node.id] ?? 0
     if (lvl > 0) nextSkills[node.id] = lvl
   }
@@ -1216,6 +1235,93 @@ export function realityReset(): boolean {
   gs.omega = (gs.omega ?? 0) + pending
   gs.omegaLifetime = (gs.omegaLifetime ?? 0) + pending
 
+  recomputeUpgrades(gs)
+  saveGame(gs).catch(console.error)
+  return true
+}
+
+// ── Challenges (snapshot-and-restore restricted runs) ────────────────────────
+export function enterChallenge(id: string): boolean {
+  if (gs.activeChallenge) return false                       // one at a time
+  const def = CHALLENGE_BY_ID[id]
+  if (!def) return false
+  if (def.requires?.some(r => !(gs.completedChallenges ?? []).includes(r))) return false
+  const blob = exportSave(gs)                                // stash the real save
+  const run = freshGameState()
+  run.activeChallenge = id
+  run.challengeSnapshot = blob
+  gs = run
+  recomputeUpgrades(gs)
+  saveGame(gs).catch(console.error)
+  pushToast(`⚔ Challenge started: ${def.name}`)
+  return true
+}
+
+/** Called once per frame from checkUnlocks while a challenge is active.
+ *  Returns true if it completed + restored this frame. */
+function maybeCompleteChallenge(): boolean {
+  const id = gs.activeChallenge
+  if (!id) return false
+  const def = CHALLENGE_BY_ID[id]
+  if (!def || !def.check(gs)) return false
+  const earned = def.medalReward
+  const real = gs.challengeSnapshot ? importSave(gs.challengeSnapshot) : null
+  if (!real) { gs.activeChallenge = null; return true }       // fail-safe: clear the marker
+  if (!real.completedChallenges) real.completedChallenges = []
+  if (!real.completedChallenges.includes(id)) {
+    real.completedChallenges.push(id)
+    real.medals = (real.medals ?? 0) + earned
+  }
+  real.activeChallenge = null
+  real.challengeSnapshot = undefined
+  gs = real
+  recomputeUpgrades(gs)
+  saveGame(gs).catch(console.error)
+  pushToast(`🎖️ Challenge complete: ${def.name} (+${earned} Medals)`)
+  return true
+}
+
+export function abandonChallenge(): boolean {
+  if (!gs.activeChallenge) return false
+  const real = gs.challengeSnapshot ? importSave(gs.challengeSnapshot) : null
+  if (!real) return false
+  real.activeChallenge = null
+  real.challengeSnapshot = undefined
+  gs = real
+  recomputeUpgrades(gs)
+  saveGame(gs).catch(console.error)
+  pushToast('Challenge abandoned — your reality is restored.')
+  return true
+}
+
+export function challengeSkillCostFor(id: string): number {
+  const node = CHALLENGE_SKILL_BY_ID[id]
+  if (!node) return 0
+  const lvl = gs.skills[id] ?? 0
+  return Math.ceil(skillCost(node, lvl).toNumber())
+}
+
+export function challengeSkillStatus(id: string): SkillStatus {
+  const node = CHALLENGE_SKILL_BY_ID[id]
+  const lvl = gs.skills[id] ?? 0
+  const maxed = !node || lvl >= node.maxLevel
+  const locked = !node || !prereqsMet(node, gs.skills)
+  const cost = challengeSkillCostFor(id)
+  const affordable = !maxed && (gs.medals ?? 0) >= cost
+  return { maxed, locked, affordable, buyable: !maxed && !locked && affordable }
+}
+
+export function buyChallengeSkill(id: string): boolean {
+  const node = CHALLENGE_SKILL_BY_ID[id]
+  if (!node) return false
+  const lvl = gs.skills[id] ?? 0
+  if (lvl >= node.maxLevel) return false
+  if (!prereqsMet(node, gs.skills)) return false
+  const cost = challengeSkillCostFor(id)
+  if ((gs.medals ?? 0) < cost) return false
+
+  gs.medals = (gs.medals ?? 0) - cost
+  gs.skills[id] = lvl + 1
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
   return true
