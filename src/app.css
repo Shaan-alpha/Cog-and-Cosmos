@@ -184,3 +184,97 @@ body::after {
 
 /* Utility: numbers with tabular figures */
 .tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+.animate-fade { animation: fade-in 0.2s var(--ease-out) forwards; }
+
+/* ── Stage dashboard components ───────────────────────────────────────────── */
+/* Shared by the per-stage panel tabs (Enchants / Warp / Duplication). They read
+   the inherited --sc stage accent, so they style correctly inside any stage panel. */
+.panel-section-title {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 1px;
+  color: var(--sc);
+  margin-bottom: 8px;
+}
+.empty-hint {
+  font-family: var(--font-flavor);
+  font-style: italic;
+  color: var(--parchment-faint);
+  text-align: center;
+  padding: 16px 0;
+}
+.cast-desc {
+  font-family: var(--font-flavor);
+  font-style: italic;
+  font-size: 0.8rem;
+  color: var(--parchment-dim);
+  line-height: 1.35;
+}
+.cast-opt { display: flex; flex-direction: column; gap: 4px; font-size: 0.76rem; }
+.cast-opt label { color: var(--parchment-dim); }
+.cast-select {
+  width: 100%;
+  background: var(--ink-900);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--parchment);
+  padding: 6px;
+  font-family: var(--font-mono);
+}
+.amp-slider { flex: 1; accent-color: var(--sc); }
+.cast-btn {
+  width: 100%;
+  padding: 8px;
+  background: var(--ink-700);
+  border: 1px solid var(--line-bright);
+  color: var(--parchment-faint);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  letter-spacing: 0.5px;
+  transition: all 0.16s;
+}
+.cast-btn.go {
+  border-color: var(--sc);
+  color: var(--sc);
+  background: color-mix(in srgb, var(--sc) 10%, var(--ink-700));
+}
+.cast-btn.go:hover {
+  background: var(--sc);
+  color: var(--ink-900);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--sc) 50%, transparent);
+}
+
+/* Warp + Duplication dashboards */
+.warp-tab { display: flex; flex-direction: column; gap: 16px; }
+.warp-dashboard {
+  padding: 14px 16px;
+  background: var(--ink-850);
+  border-color: var(--time);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.warp-preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.wp-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 11px;
+  background: var(--ink-900);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.wp-label { font-family: var(--font-flavor); font-style: italic; font-size: 0.72rem; color: var(--parchment-faint); }
+.wp-val { font-size: 0.95rem; font-weight: 700; color: var(--parchment); }
+.wp-val.gain { color: var(--positive); }
+.wp-val.warn { color: var(--time); }
+.wp-val.no { color: var(--danger); }
+
+/* Multiverse duplication slots */
+.slot-list { display: flex; flex-direction: column; gap: 8px; }
+.slot-row { display: flex; align-items: center; gap: 10px; }
+.slot-idx { font-family: var(--font-display); font-size: 0.64rem; letter-spacing: 1px; color: var(--multiverse); min-width: 56px; }
+.slot-row .cast-select { flex: 1; }
+.slot-bonus { font-size: 0.82rem; font-weight: 700; color: var(--positive); min-width: 56px; text-align: right; }

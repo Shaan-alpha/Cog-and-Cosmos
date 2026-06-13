@@ -13,9 +13,7 @@
     fmt,
     fmtRate,
     STAGE_DEFS,
-    activeEnchants,
     spaceBuffers,
-    castEnchant,
     buyLocalSkill,
     getState,
     skillLevel,
@@ -28,22 +26,13 @@
     toggleAutoBuyVault,
     warpState,
     warpChargeCap,
-    warpMaxDuration,
-    warpEfficiency,
-    warpCost,
-    castWarp,
     WARP_RECHARGE,
-    dupPct,
-    branchSlotCap,
-    branchSlots,
-    echoSustain,
-    assignBranchSlot,
-    convergencePreview,
-    castConvergence,
-    convergenceMult,
   } from '../stores/game.svelte'
   import { playBuy, playMilestone, playPrestige } from '../systems/audio'
   import OnboardingTooltip from './OnboardingTooltip.svelte'
+  import EnchantsTab from './EnchantsTab.svelte'
+  import WarpTab from './WarpTab.svelte'
+  import DuplicationTab from './DuplicationTab.svelte'
   import { LOCAL_SKILLS_BY_STAGE } from '../data/skills/local'
   import { D, ZERO, ONE } from '../systems/Decimal'
   import { BALANCE, nextMilestoneInfo } from '../systems/formulas'
@@ -163,133 +152,12 @@
     return grainRatio.min(essenceRatio).max(ZERO)
   })
 
-  // ── Magic active enchants and casting state ──
-  const activeEnch = $derived(activeEnchants())
-  const maxEnchantSlots = $derived.by(() => {
-    let slots = 2
-    if (stageState.generators.archmage && stageState.generators.archmage.count >= 50) slots += 1
-    const twinCasting = getStage('magic') ? ((getState().skills['magic:twin_casting'] ?? 0) >= 1) : false
-    if (twinCasting) slots += 1
-    return slots
-  })
-
-  const unlockedStages = $derived.by(() => {
-    const list = []
-    for (const [sid, sdef] of Object.entries(STAGE_DEFS)) {
-      if (getStage(sid)?.unlocked) {
-        list.push({ id: sid, name: sdef.name, emoji: sdef.emoji })
-      }
-    }
-    return list
-  })
-
-  let castTargets = $state<Record<string, string>>({
-    quicken: 'village',
-    greater_quicken: 'village',
-    overcharge: 'village',
-  })
-  let castEssence = $state<Record<string, number>>({
-    quicken: 0,
-    greater_quicken: 0,
-    overcharge: 0,
-  })
-
-  const ENCHANT_DEFS = [
-    { id: 'quicken', name: 'Quicken', pctCost: 0.05, baseMult: 3, ampPer1k: 0.5, description: 'Boosts a stage by 3x. Scales with Essence spent.' },
-    { id: 'greater_quicken', name: 'Greater Quicken', pctCost: 0.20, baseMult: 7, ampPer1k: 1.0, description: 'Forces a stage by 7x. High multiplier, scales with Essence.' },
-    { id: 'mass_enchant', name: 'Mass Enchant', pctCost: 0.40, baseMult: 2.5, ampPer1k: 0, description: 'Boosts ALL stages by 2.5x simultaneously. Cannot be Essence amplified.' },
-    { id: 'overcharge', name: 'Overcharge', pctCost: 0.75, baseMult: 12, ampPer1k: 0.5, description: 'Speeds up a stage by 12x, but carries a 15% backfire risk (x0.5 mult).' },
-  ]
-
-  function getEnchantName(id: string) {
-    if (id === 'quicken') return 'Quicken'
-    if (id === 'greater_quicken') return 'Greater Quicken'
-    if (id === 'mass_enchant') return 'Mass Enchant'
-    if (id === 'overcharge') return 'Overcharge'
-    return id
-  }
-
-  function getStageName(id: string) {
-    return STAGE_DEFS[id as keyof typeof STAGE_DEFS]?.name ?? id
-  }
-
-  function estimateCap(id: string): number {
-    const baseMult = id === 'quicken' ? 3 : id === 'greater_quicken' ? 7 : id === 'overcharge' ? 12 : 2.5
-    const K = stageState.generators.astralconduit?.count ?? 0
-    return baseMult * (1 + 0.25 * K)
-  }
-
-  function estimateMult(id: string, essence: number): number {
-    const baseMult = id === 'quicken' ? 3 : id === 'greater_quicken' ? 7 : id === 'overcharge' ? 12 : 2.5
-    const ampPer1k = id === 'quicken' ? 0.5 : id === 'greater_quicken' ? 1.0 : id === 'overcharge' ? 0.5 : 0
-    const amp = (essence / 1000) * ampPer1k
-    const cap = estimateCap(id)
-    return Math.min(baseMult + amp, cap)
-  }
-
-  function handleCast(id: string) {
-    const target = id === 'mass_enchant' ? 'all' : castTargets[id]
-    const essence = id === 'mass_enchant' ? 0 : castEssence[id]
-    const ok = castEnchant(id, target, essence)
-    if (ok) {
-      playMilestone()
-      if (id !== 'mass_enchant') castEssence[id] = 0
-    }
-  }
-
-  // ── Time warp dashboard state ──
+  // ── Time Paradox banner state (the Warp tab itself lives in WarpTab.svelte) ──
   const warp = $derived(warpState())
   const chargeCap = $derived(warpChargeCap())
-  const maxT = $derived(warpMaxDuration())
-  const warpEff = $derived(warpEfficiency())
   const paradox = $derived(stageState.secondaryAmount)
   // Throttle preview: 1 / (1 + sqrt(paradox/200)).
   const throttle = $derived(1 / (1 + Math.sqrt(Math.max(0, paradox.toNumber()) / 200)))
-  let warpTarget = $state('village')
-  let warpSeconds = $state(60)
-  // Keep the duration slider within the (skill-dependent) cap.
-  $effect(() => { if (warpSeconds > maxT) warpSeconds = maxT })
-
-  const warpCostPreview = $derived(warpCost(warpSeconds))
-  const warpGainPreview = $derived.by(() => {
-    const tr = stageRates(warpTarget)
-    return tr.primary.mul(warpSeconds).mul(warpEff)
-  })
-  const warpParadoxPreview = $derived.by(() => {
-    const epochs = getStage('time')?.prestigeCurrency ?? 0
-    return 0.5 * warpSeconds * Math.max(0.1, 1 - 0.005 * epochs)
-  })
-  const canWarp = $derived(
-    warp.charges >= 1 && stageState.primaryAmount.gte(warpCostPreview) && (getStage(warpTarget)?.unlocked ?? false)
-  )
-
-  function handleWarp() {
-    const gained = castWarp(warpTarget, warpSeconds)
-    if (gained !== null) playPrestige()
-  }
-
-  // ── Multiverse duplication + convergence state ──
-  const slotCap = $derived(branchSlotCap())
-  const slots = $derived(branchSlots())
-  const dupPercent = $derived(dupPct())
-  const sustain = $derived(echoSustain())
-  const convPreview = $derived(convergencePreview())
-  const convMult = $derived(convergenceMult())
-  // Build the slot view: cap entries, each its assigned stage ('' = empty).
-  const slotView = $derived.by(() => {
-    const out: { index: number; target: string }[] = []
-    for (let i = 0; i < slotCap; i++) out.push({ index: i, target: slots[i] ?? '' })
-    return out
-  })
-  function handleAssignSlot(index: number, e: Event) {
-    assignBranchSlot(index, (e.target as HTMLSelectElement).value)
-  }
-  function handleConvergence() {
-    if (!convPreview.ready) return
-    if (confirm(`Collapse all branches?\n\nBakes a permanent ×${convPreview.mult.toFixed(2)} multiplier into ALL stages and grants +${convPreview.points} Convergence, but resets the Multiverse (Shards, Echoes, generators, branch slots).`)) {
-      if (castConvergence()) playPrestige()
-    }
-  }
 
   // ── Local Skills tree ──
   function handleBuyLocalSkill(nodeId: string) {
@@ -608,226 +476,15 @@
     {/if}
 
     {#if activeTab === 'enchants' && stageId === 'magic'}
-      <div class="enchants-tab animate-fade">
-        <!-- Active enchants list -->
-        <div class="active-list frame bracketed">
-          <h3 class="panel-section-title">🔮 Active Enchantment Slots ({activeEnch.length} / {maxEnchantSlots})</h3>
-          {#if activeEnch.length === 0}
-            <p class="empty-hint">No active enchantments. Cast a spell below to boost production!</p>
-          {:else}
-            <div class="active-grid">
-              {#each activeEnch as enc}
-                <div class="active-enc-card frame">
-                  <div class="card-head">
-                    <span class="enc-name">{getEnchantName(enc.id)}</span>
-                    <span class="enc-target" style="color: var(--{enc.targetStageId})">
-                      → {enc.targetStageId === 'all' ? 'All Stages' : getStageName(enc.targetStageId)}
-                    </span>
-                  </div>
-                  <div class="card-body">
-                    <span class="enc-mult tnum" class:backfire={enc.multiplier.lt(1)}>
-                      {enc.multiplier.lt(1) ? `⚠️ Backfire (×${fmt(enc.multiplier)})` : `×${fmt(enc.multiplier)} rate`}
-                    </span>
-                    <span class="enc-time tnum">{Math.ceil(enc.durationLeft)}s left</span>
-                  </div>
-                  <div class="duration-bar">
-                    <div class="duration-fill" style="width: {(enc.durationLeft / enc.totalDuration) * 100}%"></div>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <!-- Casting dashboard -->
-        <div class="cast-dashboard">
-          <h3 class="panel-section-title">Cast Enchantments</h3>
-          <div class="cast-cards">
-            {#each ENCHANT_DEFS as edef}
-              {@const costMana = stageState.primaryAmount.mul(edef.pctCost)}
-              {@const isAffordable = stageState.primaryAmount.gt(0) && stageState.primaryAmount.gte(costMana)}
-              <div class="cast-card frame bracketed">
-                <div class="cast-top">
-                  <span class="cast-title">{edef.name}</span>
-                  <span class="cast-cost-mana tnum">{edef.pctCost * 100}% Mana ({fmt(costMana)})</span>
-                </div>
-                <p class="cast-desc">{edef.description}</p>
-                
-                {#if edef.id !== 'mass_enchant'}
-                  <!-- Target dropdown -->
-                  <div class="cast-opt">
-                    <label for="target-{edef.id}">Target Stage:</label>
-                    <select id="target-{edef.id}" bind:value={castTargets[edef.id]} class="cast-select">
-                      {#each unlockedStages as us}
-                        <option value={us.id}>{us.emoji} {us.name}</option>
-                      {/each}
-                    </select>
-                  </div>
-
-                  <!-- Essence amp input -->
-                  <div class="cast-opt">
-                    <label for="essence-{edef.id}" class="amp-label">
-                      Essence Amp (+{edef.ampPer1k}x / 1k Essence):
-                    </label>
-                    <div class="amp-row">
-                      <input
-                        type="range"
-                        id="essence-{edef.id}"
-                        min="0"
-                        max={Math.min(10000, Math.floor(stageState.secondaryAmount.toNumber()))}
-                        step="1000"
-                        bind:value={castEssence[edef.id]}
-                        class="amp-slider"
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        bind:value={castEssence[edef.id]}
-                        class="amp-num frame"
-                      />
-                    </div>
-                    <div class="amp-preview tnum">
-                      Est. Mult: ×{fmt(estimateMult(edef.id, castEssence[edef.id]))} (potency cap: ×{fmt(estimateCap(edef.id))})
-                    </div>
-                  </div>
-                {/if}
-
-                <button
-                  class="cast-btn frame"
-                  class:go={isAffordable && activeEnch.length < maxEnchantSlots}
-                  disabled={!isAffordable || activeEnch.length >= maxEnchantSlots}
-                  onclick={() => handleCast(edef.id)}
-                >
-                  Cast {edef.name}
-                </button>
-              </div>
-            {/each}
-          </div>
-        </div>
-      </div>
+      <EnchantsTab {stageId} />
     {/if}
 
     {#if activeTab === 'warp' && stageId === 'time'}
-      <div class="warp-tab animate-fade">
-        <div class="warp-dashboard frame bracketed">
-          <h3 class="panel-section-title">⏳ Cast a Warp Tick</h3>
-          <p class="cast-desc">
-            Spend Chronons + one charge to apply a burst of simulated time to any stage —
-            instant offline-like gains. Every fold accrues Paradox, which throttles Time output until vented.
-          </p>
-
-          <div class="cast-opt">
-            <label for="warp-target">Target Stage:</label>
-            <select id="warp-target" bind:value={warpTarget} class="cast-select">
-              {#each unlockedStages as us}
-                <option value={us.id}>{us.emoji} {us.name}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="cast-opt">
-            <label for="warp-seconds">Warp Duration: {warpSeconds}s of game-time (max {maxT}s)</label>
-            <input
-              type="range"
-              id="warp-seconds"
-              min="30"
-              max={maxT}
-              step="30"
-              bind:value={warpSeconds}
-              class="amp-slider"
-            />
-          </div>
-
-          <div class="warp-preview-grid">
-            <div class="wp-cell">
-              <span class="wp-label">Cost</span>
-              <span class="wp-val tnum" class:no={stageState.primaryAmount.lt(warpCostPreview)}>{fmt(warpCostPreview)} {def.primaryCurrency.symbol}</span>
-            </div>
-            <div class="wp-cell">
-              <span class="wp-label">Efficiency</span>
-              <span class="wp-val tnum">×{warpEff.toFixed(2)}</span>
-            </div>
-            <div class="wp-cell">
-              <span class="wp-label">Est. Gain ({getStageName(warpTarget)})</span>
-              <span class="wp-val tnum gain">+{fmt(warpGainPreview)}</span>
-            </div>
-            <div class="wp-cell">
-              <span class="wp-label">Paradox Added</span>
-              <span class="wp-val tnum warn">+{warpParadoxPreview.toFixed(0)}</span>
-            </div>
-          </div>
-
-          <button
-            class="cast-btn frame"
-            class:go={canWarp}
-            disabled={!canWarp}
-            onclick={handleWarp}
-          >
-            {warp.charges < 1 ? 'No Warp Charges' : 'Warp Time ⏩'}
-          </button>
-        </div>
-      </div>
+      <WarpTab {stageId} />
     {/if}
 
     {#if activeTab === 'duplication' && stageId === 'multiverse'}
-      <div class="warp-tab animate-fade">
-        <div class="warp-dashboard frame bracketed" style="border-color: var(--multiverse)">
-          <h3 class="panel-section-title" style="color: var(--multiverse)">🪞 Branch Slots — Clone a Stage</h3>
-          <p class="cast-desc">
-            Each Branch Node opens a slot. A slot adds <strong>{(dupPercent * 100).toFixed(1)}%</strong> of the
-            chosen stage’s live output as bonus production. Echoes sustain the copies — let them run dry and the
-            clone fades (current sustain <strong>×{sustain.toFixed(2)}</strong>).
-          </p>
-
-          {#if slotCap === 0}
-            <p class="empty-hint">Build a Branch Node to open your first duplication slot.</p>
-          {:else}
-            <div class="slot-list">
-              {#each slotView as slot}
-                <div class="slot-row">
-                  <span class="slot-idx">Slot {slot.index + 1}</span>
-                  <select class="cast-select" value={slot.target} onchange={(e) => handleAssignSlot(slot.index, e)}>
-                    <option value="">— none —</option>
-                    {#each unlockedStages as us}
-                      <option value={us.id}>{us.emoji} {us.name}</option>
-                    {/each}
-                  </select>
-                  {#if slot.target}
-                    <span class="slot-bonus tnum">+{((dupPercent * sustain) * 100).toFixed(1)}%</span>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <!-- Convergence collapse -->
-        <div class="warp-dashboard frame bracketed" style="border-color: var(--multiverse)">
-          <h3 class="panel-section-title" style="color: var(--multiverse)">💠 Convergence Collapse</h3>
-          <p class="cast-desc">
-            The capstone. Collapse all branches into one reality: bake a <strong>permanent global multiplier</strong>
-            into every stage and earn Convergence. Requires a Convergence Core, all 8 stages unlocked, and ≥ 1e12 Shards.
-          </p>
-          <div class="warp-preview-grid">
-            <div class="wp-cell">
-              <span class="wp-label">Current permanent ×mult</span>
-              <span class="wp-val tnum">×{fmt(convMult)}</span>
-            </div>
-            <div class="wp-cell">
-              <span class="wp-label">Next collapse grants</span>
-              <span class="wp-val tnum gain">×{convPreview.mult.toFixed(2)} · +{convPreview.points} Ω</span>
-            </div>
-          </div>
-          <button
-            class="cast-btn frame"
-            class:go={convPreview.ready}
-            disabled={!convPreview.ready}
-            onclick={handleConvergence}
-          >
-            {convPreview.ready ? 'Collapse the Branches 💠' : 'Convergence locked (need Core · all stages · 1e12 Shards)'}
-          </button>
-        </div>
-      </div>
+      <DuplicationTab {stageId} />
     {/if}
 
     {#if activeTab === 'skills'}
@@ -1363,183 +1020,6 @@
     animation: pulse 1.5s infinite ease-in-out;
   }
 
-  /* ── Enchantments Tab ─────────────────────────────────────────────────── */
-  .enchants-tab {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .panel-section-title {
-    font-family: var(--font-display);
-    font-size: 0.82rem;
-    letter-spacing: 1px;
-    color: var(--sc);
-    margin-bottom: 8px;
-  }
-  .empty-hint {
-    font-family: var(--font-flavor);
-    font-style: italic;
-    color: var(--parchment-faint);
-    text-align: center;
-    padding: 16px 0;
-  }
-  .active-list {
-    padding: 12px 14px;
-    background: var(--ink-850);
-  }
-  .active-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .active-enc-card {
-    padding: 8px 11px;
-    background: var(--ink-900);
-    border-color: var(--sc);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    position: relative;
-    overflow: hidden;
-  }
-  .active-enc-card .card-head {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    font-weight: 700;
-  }
-  .active-enc-card .card-head .enc-name {
-    color: var(--sc);
-  }
-  .active-enc-card .card-head .enc-target {
-    font-size: 0.74rem;
-  }
-  .active-enc-card .card-body {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.74rem;
-  }
-  .active-enc-card .card-body .enc-mult {
-    color: var(--positive);
-  }
-  .active-enc-card .card-body .enc-mult.backfire {
-    color: var(--danger);
-  }
-  .active-enc-card .card-body .enc-time {
-    color: var(--parchment-dim);
-  }
-  .duration-bar {
-    width: 100%;
-    height: 2px;
-    background: var(--ink-800);
-    margin-top: 4px;
-  }
-  .duration-fill {
-    height: 100%;
-    background: var(--sc);
-    transition: width 0.1s linear;
-  }
-
-  .cast-dashboard .cast-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .cast-card {
-    padding: 12px 14px;
-    background: var(--ink-850);
-    border-color: var(--line-bright);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .cast-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
-  .cast-title {
-    font-family: var(--font-display);
-    font-size: 0.86rem;
-    color: var(--sc);
-    letter-spacing: 0.5px;
-  }
-  .cast-cost-mana {
-    font-size: 0.74rem;
-    color: var(--parchment-dim);
-  }
-  .cast-desc {
-    font-family: var(--font-flavor);
-    font-style: italic;
-    font-size: 0.8rem;
-    color: var(--parchment-dim);
-    line-height: 1.35;
-  }
-  .cast-opt {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 0.76rem;
-  }
-  .cast-opt label {
-    color: var(--parchment-dim);
-  }
-  .cast-select {
-    width: 100%;
-    background: var(--ink-900);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    color: var(--parchment);
-    padding: 6px;
-    font-family: var(--font-mono);
-  }
-  .amp-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .amp-slider {
-    flex: 1;
-    accent-color: var(--sc);
-  }
-  .amp-num {
-    width: 70px;
-    background: var(--ink-900);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    color: var(--parchment);
-    padding: 4px 8px;
-    text-align: center;
-    font-family: var(--font-mono);
-  }
-  .amp-preview {
-    font-size: 0.72rem;
-    color: var(--sc);
-    margin-top: 2px;
-  }
-  .cast-btn {
-    width: 100%;
-    padding: 8px;
-    background: var(--ink-700);
-    border: 1px solid var(--line-bright);
-    color: var(--parchment-faint);
-    cursor: pointer;
-    font-family: var(--font-display);
-    font-size: 0.76rem;
-    letter-spacing: 0.5px;
-    transition: all 0.16s;
-  }
-  .cast-btn.go {
-    border-color: var(--sc);
-    color: var(--sc);
-    background: color-mix(in srgb, var(--sc) 10%, var(--ink-700));
-  }
-  .cast-btn.go:hover {
-    background: var(--sc);
-    color: var(--ink-900);
-    box-shadow: 0 0 12px color-mix(in srgb, var(--sc) 50%, transparent);
-  }
-
   /* ── Local Skills Tab ─────────────────────────────────────────────────── */
   .local-skills-tab {
     display: flex;
@@ -1633,58 +1113,7 @@
     gap: 16px;
   }
 
-  /* ── Warp Tab ─────────────────────────────────────────────────────────── */
-  .warp-tab { display: flex; flex-direction: column; gap: 16px; }
-  .warp-dashboard {
-    padding: 14px 16px;
-    background: var(--ink-850);
-    border-color: var(--time);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .warp-preview-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 4px;
-  }
-  .wp-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 11px;
-    background: var(--ink-900);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-  }
-  .wp-label {
-    font-family: var(--font-flavor); font-style: italic;
-    font-size: 0.72rem; color: var(--parchment-faint);
-  }
-  .wp-val { font-size: 0.95rem; font-weight: 700; color: var(--parchment); }
-  .wp-val.gain { color: var(--positive); }
-  .wp-val.warn { color: var(--time); }
-  .wp-val.no { color: var(--danger); }
-
-  /* ── Multiverse Duplication slots ─────────────────────────────────────── */
-  .slot-list { display: flex; flex-direction: column; gap: 8px; }
-  .slot-row { display: flex; align-items: center; gap: 10px; }
-  .slot-idx {
-    font-family: var(--font-display); font-size: 0.64rem; letter-spacing: 1px;
-    color: var(--multiverse); min-width: 56px;
-  }
-  .slot-row .cast-select { flex: 1; }
-  .slot-bonus {
-    font-size: 0.82rem; font-weight: 700; color: var(--positive);
-    min-width: 56px; text-align: right;
-  }
-
   /* ── Micro-animations ─────────────────────────────────────────────────── */
-  .animate-fade {
-    animation: fade-in 0.2s var(--ease-out) forwards;
-  }
-
   @keyframes pulse {
     0%, 100% { opacity: 0.9; }
     50% { opacity: 0.6; }
