@@ -137,6 +137,20 @@ export function ascensionGain(lifetime: Decimal, softcap: Decimal, k: number = A
   return Math.floor(k * ratio.pow(0.33).toNumber())
 }
 
+// ── Reality Reset gain (Omega Ω) ────────────────────────────────────────────
+// Top meta layer: cube-root of all-time Aether for brutal, deliberate pacing.
+//   Ω = floor( cbrt(aetherLifetime / OMEGA_SOFTCAP) · (1 + 0.15·multLevel) )
+// `multLevel` is the om:reality_multiplier skill level (+15% Ω gain per level).
+// Aether counts stay well under 1e15, so this uses native Math (no Decimal).
+// Uses Math.cbrt (not pow(x, 1/3)) + a tiny epsilon so perfect cubes (8000 → 20)
+// aren't eaten by float error (pow(8000, 1/3) = 19.999…) before the floor.
+export const OMEGA_SOFTCAP = 1e3
+export function omegaGain(aetherLifetime: number, multLevel = 0): number {
+  if (aetherLifetime <= 0) return 0
+  const base = Math.cbrt(aetherLifetime / OMEGA_SOFTCAP)
+  return Math.floor(base * (1 + 0.15 * multLevel) + 1e-9)
+}
+
 // ── Fortune mint rate ─────────────────────────────────────────────────────
 // dStar/dt = SUM( log10(1 + surplus) * weight * engineMult )
 export function fortuneMintRate(

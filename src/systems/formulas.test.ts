@@ -16,6 +16,7 @@ import {
   fortuneMintRate,
   offlineGain,
   exchange,
+  omegaGain,
 } from './formulas'
 
 // Characterization tests: these pin the CURRENT behaviour of the balance math
@@ -202,5 +203,24 @@ describe('exchange', () => {
   })
   it('compounds the tax with conversions', () => {
     expect(exchange(D(100), D(2), 0.1, 1).toNumber()).toBeCloseTo(180, 6) // rate*0.9
+  })
+})
+
+describe('omegaGain', () => {
+  it('is 0 at or below zero lifetime Aether', () => {
+    expect(omegaGain(0)).toBe(0)
+    expect(omegaGain(-5)).toBe(0)
+  })
+  it('is the floored cube-root of (aetherLifetime / 1e3)', () => {
+    // (1e3 / 1e3)^(1/3) = 1
+    expect(omegaGain(1e3)).toBe(1)
+    // (8e6 / 1e3)^(1/3) = 8000^(1/3) = 20
+    expect(omegaGain(8e6)).toBe(20)
+    // (7e3 / 1e3)^(1/3) = 7^(1/3) ≈ 1.91 → floor 1
+    expect(omegaGain(7e3)).toBe(1)
+  })
+  it('scales gain by the reality-multiplier level (+15%/level)', () => {
+    // base at 8e6 = 20; level 2 → floor(20 * 1.30) = 26
+    expect(omegaGain(8e6, 2)).toBe(26)
   })
 })
