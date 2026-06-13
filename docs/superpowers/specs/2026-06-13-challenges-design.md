@@ -25,6 +25,7 @@ The prestige stack is complete (Prestige → Ascension → Transcendence → Rea
 - **Reward (Q2): currency + tree.** Completing a challenge grants **Medals**; Medals buy nodes on a Challenge tree that folds into `recomputeUpgrades()`. `completedChallenges` is just the cleared-set (gating + UI + prevents double-reward); the production boost comes from spending Medals on the tree.
 - **One active challenge at a time**; re-entering is blocked while `activeChallenge` is set.
 - **Unlock gate:** the Challenges view appears after the player's **first Ascension** (`completedChallenges.length > 0 || any stage ascensionCount ≥ 1`) — mid-game, when meta systems are open.
+- **Revision (post-approval): `disabledStages` dropped.** The stage-unlock chain is linear and gated on each stage's lifetime output (Mine needs `farm.primaryLifetime ≥ 5000`, Factory needs Mine, …), so a disabled/non-producing early stage permanently soft-locks every downstream unlock — making any goal past it unreachable. v1 ships **4 challenges** using only restrictions that *slow* the climb without gating it (`noAutoBuy`, `noBindings`, `prodMult`, `noPrestige`). A future "disable a mechanic" restriction would need to target a non-gating system (e.g. the Fortune Engine) — deferred.
 
 ---
 
@@ -56,7 +57,6 @@ Data-driven, mirroring `achievements.ts`:
 
 ```ts
 export interface ChallengeRestriction {
-  disabledStages?: string[]  // these stages never unlock / never produce during the run
   noAutoBuy?: boolean        // auto-buyers disabled
   noBindings?: boolean       // cross-stage binding multipliers forced to 1
   prodMult?: number          // flat global production multiplier (e.g. 0.5)
@@ -76,12 +76,11 @@ export interface Challenge {
 }
 ```
 
-### v1 roster (5)
+### v1 roster (4)
 | id | name | restriction | goal (`check`) | medals | requires |
 |---|---|---|---|---|---|
 | `spartan_cogs` | Spartan Cogs | `noAutoBuy` | `village.primaryLifetime ≥ 1e9` | 1 | — |
 | `broken_chain` | Broken Chain | `noBindings` | `mine.unlocked` | 2 | — |
-| `famine` | Famine | `disabledStages:['farm']` | `factory.unlocked` | 2 | — |
 | `half_measures` | Half Measures | `prodMult:0.5` | `engine.fortuneLifetime ≥ 100` | 3 | — |
 | `purist` | Purist | `noPrestige` + `noAutoBuy` | `village.primaryLifetime ≥ 1e12` | 3 | `['spartan_cogs']` |
 
@@ -96,13 +95,12 @@ A single store helper exposes the active restriction:
 function activeChallengeRestriction(): ChallengeRestriction | null  // null when not in a challenge
 ```
 Read at these points (each a small guard):
-1. **`stepSim` per-stage loop** — `if (restriction?.disabledStages?.includes(sid)) continue` (skip tick); `if (restriction?.noAutoBuy) ` → skip the `autoBuyTick` branch.
-2. **`bindingMultFor()`** — `if (restriction?.noBindings) return ONE` (before computing rule multipliers).
-3. **`effGlobalMult()`** — multiply by `restriction.prodMult ?? 1`.
-4. **`checkUnlocks()`** — a disabled stage must not unlock during the run: `if (restriction?.disabledStages?.includes(sid)) ` → skip its unlock clause.
-5. **`prestigeStage()`** — `if (restriction?.noPrestige) return` (and the panel hides/disables the prestige button when active).
+1. **`stepSim` per-stage loop** — `if (restriction?.noAutoBuy)` → skip the `autoBuyTick` branch.
+2. **`bindingMultFor()`** — `if (restriction?.noBindings) return ONE` (before computing rule multipliers + duplication).
+3. **`effGlobalMult(state)`** — multiply by the active challenge's `prodMult ?? 1`, read from the *passed state* (so it applies both in the live loop and offline).
+4. **`prestigeStage()`** — `if (activeChallengeRestriction()?.noPrestige) return 0` (and the panel disables the prestige button while a challenge is active).
 
-> Disabled-stage buying is naturally prevented (the stage stays locked → `canAfford`/`buy` already gate on `unlocked`/`prestigeCount`), and the Stage view won't show a locked stage.
+> All four restrictions only *slow* the climb — none gates the linear unlock chain — so no `checkUnlocks` guarding is needed. The win-check (§6) is still called from `checkUnlocks`.
 
 ---
 
