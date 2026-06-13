@@ -8,7 +8,7 @@ import type { GameState } from '../data/types'
 import { D, Decimal } from './Decimal'
 
 const SAVE_KEY = 'cog_cosmos_save'
-const CURRENT_VERSION = 11
+const CURRENT_VERSION = 12
 // Saves older than this predate the v5 economy rebalance (milestone ×8→×2, steeper
 // cost growth). Their banked currency was earned on the old runaway curve, so they
 // are intentionally discarded on load rather than migrated — a clean slate on the
@@ -173,6 +173,13 @@ export function migrate(raw: GameState): GameState {
   if (raw.version < 11) {
     if (raw.unlockedAchievements === undefined) raw.unlockedAchievements = []
     raw.version = 11
+  }
+  // v11 → v12: Reality Reset meta layer (Omega pool, lifetime, count) — additive.
+  if (raw.version < 12) {
+    if (raw.omega === undefined) raw.omega = 0
+    if (raw.omegaLifetime === undefined) raw.omegaLifetime = 0
+    if (raw.omegaCount === undefined) raw.omegaCount = 0
+    raw.version = 12
   }
   raw.version = CURRENT_VERSION
   return sanitizeState(raw)

@@ -7,7 +7,7 @@ import type { GameState } from '../data/types'
 // the Decimal serialise/deserialise round-trip. These guard against precision
 // loss and dropped fields when the save schema or migrate() are touched.
 
-const CURRENT_VERSION = 11
+const CURRENT_VERSION = 12
 
 describe('migrate: version ladder', () => {
   it('upgrades a v5 save to the current version, adding all later fields', () => {
@@ -24,6 +24,9 @@ describe('migrate: version ladder', () => {
     expect(out.aetherLifetime).toBe(0)
     expect(out.transcendCount).toBe(0)
     expect(out.unlockedAchievements).toEqual([])
+    expect(out.omega).toBe(0)
+    expect(out.omegaLifetime).toBe(0)
+    expect(out.omegaCount).toBe(0)
     const v = out.stages.village as any
     expect(v.ascensionCount).toBe(0)
     expect(v.autoBuyMode).toBe('cheapest')
@@ -44,6 +47,19 @@ describe('migrate: version ladder', () => {
     // newer (v9+) fields still get backfilled
     expect((out.stages.village as any).autoBuyMode).toBe('cheapest')
     expect(out.aether).toBe(0)
+  })
+
+  it('v11 → v12 seeds Omega fields and preserves existing ones', () => {
+    const raw = {
+      version: 11,
+      omega: 7, omegaLifetime: 9, omegaCount: 2,
+      stages: {},
+    } as unknown as GameState
+    const out = migrate(raw)
+    expect(out.version).toBe(CURRENT_VERSION)
+    expect(out.omega).toBe(7)
+    expect(out.omegaLifetime).toBe(9)
+    expect(out.omegaCount).toBe(2)
   })
 
   it('never lets convergenceMult sanitise to zero (would null all production)', () => {

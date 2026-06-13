@@ -116,6 +116,9 @@ export interface GameState {
   aetherLifetime?: number   // total Aether ever earned
   transcendCount?: number   // number of times transcended
   fortuneAllTime?: Decimal  // all-time ★ minted (survives resets, drives Æ gain)
+  omega?: number            // Omega (Ω) pool — minted by Reality Reset; drives the +10%/Ω passive mult
+  omegaLifetime?: number    // total Omega ever earned (drives the per-reset increment)
+  omegaCount?: number       // number of Reality Resets performed
   unlockedAchievements?: string[] // list of unlocked achievement IDs
   settings: {
     numberFormat: 'short' | 'scientific' | 'engineering'
