@@ -8,7 +8,7 @@ import type { GameState } from '../data/types'
 import { D, Decimal } from './Decimal'
 
 const SAVE_KEY = 'cog_cosmos_save'
-const CURRENT_VERSION = 14
+const CURRENT_VERSION = 15
 // Saves older than this predate the v5 economy rebalance (milestone ×8→×2, steeper
 // cost growth). Their banked currency was earned on the old runaway curve, so they
 // are intentionally discarded on load rather than migrated — a clean slate on the
@@ -113,6 +113,7 @@ export function migrate(raw: GameState): GameState {
     if (!raw.settings) {
       raw.settings = {
         numberFormat: 'short',
+        juice: 'full',
         autoSaveInterval: 30_000,
         offlineProgress: true
       }
@@ -192,6 +193,13 @@ export function migrate(raw: GameState): GameState {
   if (raw.version < 14) {
     if (raw.collectedRelics === undefined) raw.collectedRelics = []
     raw.version = 14
+  }
+  // v14 → v15: juice/game-feel intensity preference (additive). Defensive: seed a
+  // settings object for any settings-less legacy save, then default juice to 'full'.
+  if (raw.version < 15) {
+    if (!raw.settings) raw.settings = { numberFormat: 'short', juice: 'full', autoSaveInterval: 30_000, offlineProgress: true } as GameState['settings']
+    if ((raw.settings as { juice?: string }).juice === undefined) raw.settings.juice = 'full'
+    raw.version = 15
   }
   raw.version = CURRENT_VERSION
   return sanitizeState(raw)

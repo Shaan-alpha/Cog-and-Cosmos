@@ -9,6 +9,7 @@
     saveGame
   } from '../stores/game.svelte'
   import { playBuy, playMilestone } from '../systems/audio'
+  import { setJuice, type JuiceLevel } from '../systems/juice'
   import CloudSyncCard from './CloudSyncCard.svelte'
 
   const gameState = $derived(getState())
@@ -16,6 +17,7 @@
 
   // Derive primitive properties to ensure Svelte 5 triggers reactive UI highlights instantly
   const numberFormat = $derived(settings?.numberFormat ?? 'short')
+  const juice = $derived(settings?.juice ?? 'full')
   const offlineProgress = $derived(settings?.offlineProgress ?? true)
   const autoSaveInterval = $derived(settings?.autoSaveInterval ?? 30000)
 
@@ -95,6 +97,15 @@
     }
   }
 
+  function selectJuice(level: JuiceLevel) {
+    if (settings && gameState) {
+      settings.juice = level
+      setJuice(level)
+      saveGame(gameState).catch(console.error)
+      playBuy()
+    }
+  }
+
   function changeAutoSave(event: Event) {
     if (settings && gameState) {
       const select = event.target as HTMLSelectElement
@@ -139,6 +150,15 @@
             >
               Engineering
             </button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <span class="setting-label">Effects (Juice)</span>
+          <div class="format-toggles">
+            <button class="format-btn {juice === 'off' ? 'active' : ''}" onclick={() => selectJuice('off')}>Off</button>
+            <button class="format-btn {juice === 'subtle' ? 'active' : ''}" onclick={() => selectJuice('subtle')}>Subtle</button>
+            <button class="format-btn {juice === 'full' ? 'active' : ''}" onclick={() => selectJuice('full')}>Full</button>
           </div>
         </div>
 

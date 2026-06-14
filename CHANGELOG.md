@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   iframe) via `vite build --base=…`; the PWA manifest `start_url`/`scope` are now relative so it
   resolves correctly under both. Dev/preview (`build`) stay at root base.
 
+### Added — Phase 4: Juice & game-feel · Save v15
+- **Effects layer.** Floating number pop-ups on gather/buy, brass-spark/star **particle bursts** on
+  milestone crossings + prestige, **counter bumps** on the masthead ★, and a brief **screen-shake** on the
+  four reset events (prestige / ascension / transcendence / reality reset). Rendered by a single
+  `EffectsLayer` overlay fed by a capped, render-only effects bus (`stores/effects.svelte.ts`) — zero
+  sim-loop involvement, GPU-composited transforms only, nodes self-clean on `animationend`.
+- **Effects: Off / Subtle / Full** in Settings (`subtle` = no shake), persisted as `settings.juice`
+  (**save v14 → v15**, additive). Defaults to `full`, or `subtle` for new players whose OS requests
+  reduced motion.
+- **First `prefers-reduced-motion` support** — shake/bump gate off and floaters/bursts collapse to an
+  instant flash under reduced motion.
+
 ### Fixed — test suite broken under the Vite 8 / Vitest 4 toolchain upgrade
 - **`npm test` failed every file with "Vitest failed to find the current suite."** The global
   `resolve.conditions: ['browser']` in `vitest.config.ts` (added so the jsdom UI tests get Svelte's

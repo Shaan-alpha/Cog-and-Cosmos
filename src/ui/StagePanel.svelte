@@ -27,6 +27,8 @@
     warpState,
     warpChargeCap,
     WARP_RECHARGE,
+    emitFloater,
+    emitBurst,
   } from '../stores/game.svelte'
   import { playBuy, playMilestone, playPrestige } from '../systems/audio'
   import OnboardingTooltip from './OnboardingTooltip.svelte'
@@ -50,9 +52,16 @@
   const GATHER_VERB: Record<string, string> = { village: 'Collect', farm: 'Harvest', mine: 'Mine', factory: 'Forge', magic: 'Channel', space: 'Siphon' }
   const gatherVerb = $derived(GATHER_VERB[stageId] ?? 'Gather')
 
-  function handleGather() {
-    manualGather(stageId)
+  function handleGather(e?: MouseEvent) {
+    const got = manualGather(stageId)
     playBuy()
+    const rect = (e?.currentTarget as HTMLElement | undefined)?.getBoundingClientRect()
+    if (rect) emitFloater({
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      text: `+${fmt(got)}`,
+      color: def.color,
+    })
   }
 
   let buyMode = $state<1 | 10 | 100 | -1>(1)
@@ -64,24 +73,42 @@
   function handleToggleAuto() { toggleAutoBuy(stageId) }
 
   // Milestone tiers are owned centrally by formulas.ts BALANCE — single source of truth.
-  function handleBuy(genId: string) {
+  function handleBuy(genId: string, e?: MouseEvent) {
     const before = stageState.generators[genId]?.count ?? 0
     const ok = buyGenerator(stageId, genId, buyMode)
     if (!ok) return
     const after = stageState.generators[genId]?.count ?? 0
     const crossedMilestone = BALANCE.milestoneTiers.some(m => before < m && after >= m)
-    if (crossedMilestone) playMilestone()
-    else playBuy()
+    const rect = (e?.currentTarget as HTMLElement | undefined)?.getBoundingClientRect()
+    const cx = rect ? rect.left + rect.width / 2 : 0
+    const cy = rect ? rect.top + rect.height / 2 : 0
+    if (crossedMilestone) {
+      playMilestone()
+      if (rect) emitBurst({ x: cx, y: cy, particle: 'star', count: 12 })
+    } else {
+      playBuy()
+      if (rect) emitFloater({ x: cx, y: cy, text: `+${after - before}`, color: def.color })
+    }
   }
 
-  function handlePrestige() {
+  function handlePrestige(e?: MouseEvent) {
     const gain = prestigePreview(stageId)
     if (gain === 0) return
     const ok = confirm(
       `Prestige the ${def.name}?\n\nYou will earn +${gain} ${def.prestigeCurrency.name} ` +
       `but reset all generators and ${def.primaryCurrency.name} in this stage.`
     )
-    if (ok) { prestigeStage(stageId); playPrestige() }
+    if (ok) {
+      prestigeStage(stageId)
+      playPrestige()
+      const rect = (e?.currentTarget as HTMLElement | undefined)?.getBoundingClientRect()
+      if (rect) emitBurst({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        particle: 'star',
+        count: 20,
+      })
+    }
   }
 
   // ── Tab navigation ──
@@ -460,7 +487,7 @@
             {/if}
             <button
               class="buy-btn {affordable ? 'go' : ''}"
-              onclick={() => handleBuy(gdef.id)}
+              onclick={(e) => handleBuy(gdef.id, e)}
               disabled={locked || !affordable}
             >
               {#if locked}

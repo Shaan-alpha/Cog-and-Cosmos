@@ -19,6 +19,8 @@ import { RELICS, RELIC_BY_ID, type RelicRarity } from '../data/collections'
 import { EVENTS, EVENT_BY_ID } from '../data/events'
 import { ACHIEVEMENTS } from '../data/achievements'
 import { playTranscend } from '../systems/audio'
+import { defaultJuiceLevel, setJuice } from '../systems/juice'
+import { shake } from './effects.svelte'
 import { D, ONE, ZERO, fmt as baseFmt, type Dec } from '../systems/Decimal'
 import type { GameState, StageState } from '../data/types'
 import villageDef from '../data/stages/village'
@@ -98,6 +100,7 @@ function freshGameState(): GameState {
     collectedRelics: [],
     settings: {
       numberFormat: 'short',
+      juice: defaultJuiceLevel(),
       autoSaveInterval: 30_000,
       offlineProgress: true,
       seenTutorials: {},
@@ -791,6 +794,10 @@ export function pushToast(text: string) {
   const id = nextToastId++
   activeToasts = [...activeToasts, { id, text }]
 }
+
+// Re-export the juice effects bus so UI imports from the store like everything else.
+export { emitFloater, emitBurst, shake, getEffects, getShakeStamp, removeEffect } from './effects.svelte'
+
 export function unlockedAchievements() { return gs.unlockedAchievements ?? [] }
 
 export function buyGenerator(stageId: string, genId: string, amount: 1 | 10 | 100 | -1 = 1): boolean {
@@ -806,7 +813,7 @@ export function prestigeStage(stageId: string): number {
   const st = gs.stages[stageId]
   if (!economy || !st) return 0
   const gain = economy.prestige(st)
-  if (gain > 0) grantDrop('common', RELIC_DROP.common)
+  if (gain > 0) { grantDrop('common', RELIC_DROP.common); shake() }
   return gain
 }
 
@@ -845,6 +852,7 @@ export function ascendStage(stageId: string): number {
   if (gain > 0) {
     gs.legacyPoints += gain
     grantDrop('uncommon', RELIC_DROP.uncommon)
+    shake()
     saveGame(gs).catch(console.error)
   }
   return gain
@@ -1176,6 +1184,7 @@ export function transcend(): boolean {
   gs.aetherLifetime = (gs.aetherLifetime ?? 0) + pending
 
   grantDrop('rare', RELIC_DROP.rare)
+  shake()
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
   return true
@@ -1314,6 +1323,7 @@ export function realityReset(): boolean {
   gs.omegaLifetime = (gs.omegaLifetime ?? 0) + pending
 
   grantDrop('legendary', RELIC_DROP.legendary)
+  shake()
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
   return true
@@ -1646,6 +1656,7 @@ export async function initGame() {
     // A pre-v5 save was discarded for the economy rebalance — tell the player why.
     pushToast('⚙️ Economy rebalanced — the grind is slower and fairer now. Fresh save started.')
   }
+  setJuice(gs.settings?.juice ?? 'full')   // sync the effects gate to the saved/fresh preference
   initialized = true
   lastFrameMs = Date.now()
   lastSaveMs = Date.now()
