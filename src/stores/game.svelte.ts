@@ -19,6 +19,7 @@ import { RELICS, RELIC_BY_ID, type RelicRarity } from '../data/collections'
 import { EVENTS, EVENT_BY_ID } from '../data/events'
 import { ACHIEVEMENTS } from '../data/achievements'
 import { playTranscend } from '../systems/audio'
+import { defaultJuiceLevel, setJuice } from '../systems/juice'
 import { shake } from './effects.svelte'
 import { D, ONE, ZERO, fmt as baseFmt, type Dec } from '../systems/Decimal'
 import type { GameState, StageState } from '../data/types'
@@ -99,6 +100,7 @@ function freshGameState(): GameState {
     collectedRelics: [],
     settings: {
       numberFormat: 'short',
+      juice: defaultJuiceLevel(),
       autoSaveInterval: 30_000,
       offlineProgress: true,
       seenTutorials: {},
@@ -1654,6 +1656,7 @@ export async function initGame() {
     // A pre-v5 save was discarded for the economy rebalance — tell the player why.
     pushToast('⚙️ Economy rebalanced — the grind is slower and fairer now. Fresh save started.')
   }
+  setJuice(gs.settings?.juice ?? 'full')   // sync the effects gate to the saved/fresh preference
   initialized = true
   lastFrameMs = Date.now()
   lastSaveMs = Date.now()

@@ -127,6 +127,7 @@ export interface GameState {
   unlockedAchievements?: string[] // list of unlocked achievement IDs
   settings: {
     numberFormat: 'short' | 'scientific' | 'engineering'
+    juice: 'off' | 'subtle' | 'full'
     autoSaveInterval: number  // ms
     offlineProgress: boolean
     seenTutorials?: Record<string, boolean>

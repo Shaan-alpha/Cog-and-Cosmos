@@ -7,7 +7,7 @@ import type { GameState } from '../data/types'
 // the Decimal serialise/deserialise round-trip. These guard against precision
 // loss and dropped fields when the save schema or migrate() are touched.
 
-const CURRENT_VERSION = 14
+const CURRENT_VERSION = 15
 
 describe('migrate: version ladder', () => {
   it('upgrades a v5 save to the current version, adding all later fields', () => {
@@ -31,6 +31,7 @@ describe('migrate: version ladder', () => {
     expect(out.completedChallenges).toEqual([])
     expect(out.activeChallenge).toBe(null)
     expect(out.collectedRelics).toEqual([])
+    expect(out.settings.juice).toBe('full')
     const v = out.stages.village as any
     expect(v.ascensionCount).toBe(0)
     expect(v.autoBuyMode).toBe('cheapest')
