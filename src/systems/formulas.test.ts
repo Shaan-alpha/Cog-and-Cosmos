@@ -71,6 +71,20 @@ describe('maxAffordable', () => {
     const budget = bulkGeneratorCost(D(10), 1.07, 0, 7)
     expect(maxAffordable(D(10), 1.07, 0, budget)).toBe(7)
   })
+  it('is exact at every exact bulk-cost boundary (no platform-dependent off-by-one)', () => {
+    // maxAffordable floors a float logarithm that sits within ~1 ULP of integer
+    // boundaries, so a budget == bulkGeneratorCost(k) must still afford exactly k —
+    // never k-1 (under-buy) nor k+1 (over-buy). Which k were fragile differed by
+    // platform (Node 20 CI vs 24 local), so sweep a representative range.
+    for (const r of [1.07, 1.08, 1.1, 1.13]) {
+      for (let count = 0; count <= 6; count++) {
+        for (let k = 1; k <= 30; k++) {
+          const budget = bulkGeneratorCost(D(10), r, count, k)
+          expect(maxAffordable(D(10), r, count, budget)).toBe(k)
+        }
+      }
+    }
+  })
 })
 
 describe('production', () => {

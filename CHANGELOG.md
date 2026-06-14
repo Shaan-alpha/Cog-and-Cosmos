@@ -31,6 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **First `prefers-reduced-motion` support** — shake/bump gate off and floaters/bursts collapse to an
   instant flash under reduced motion.
 
+### Fixed — "buy max" under-bought by one at exact cost boundaries
+- **`maxAffordable` floored a floating-point logarithm** sitting within ~1 ULP of integer cost
+  boundaries, so a player with *exactly* enough for N generators was often told they could afford only
+  N−1. Which boundaries were affected differed by platform's `Math.log`/`Math.pow` (Node 20 CI vs Node
+  24 local), which is how it slipped local runs but failed CI (`StageEconomy` buy-max test). **Fix:** the
+  log is now just a fast estimate, corrected exactly against real `bulkGeneratorCost` comparisons —
+  deterministic and exact on every platform. Added a boundary-sweep regression test.
+
 ### Fixed — test suite broken under the Vite 8 / Vitest 4 toolchain upgrade
 - **`npm test` failed every file with "Vitest failed to find the current suite."** The global
   `resolve.conditions: ['browser']` in `vitest.config.ts` (added so the jsdom UI tests get Svelte's

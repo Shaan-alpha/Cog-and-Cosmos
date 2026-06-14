@@ -55,8 +55,15 @@ export function maxAffordable(base: Decimal, r: number, count: number, budget: D
   const rD = D(rEff)
   const inner = budget.mul(rD.sub(ONE)).div(base.mul(rD.pow(count))).add(ONE)
   if (inner.lte(ZERO)) return 0
-  const n = Math.floor(inner.log(rEff).toNumber())
-  return Math.max(0, n)
+  let n = Math.max(0, Math.floor(inner.log(rEff).toNumber()))
+  // The log floor sits within ~1 ULP of integer cost boundaries, so its result is
+  // platform-fragile (Node/libm differences in Math.log/Math.pow flip k↔k-1). Correct
+  // it exactly against real bulk costs: climb while the next unit still fits, then back
+  // off while the current batch overshoots. The log estimate is within ±1, so this is
+  // a couple of iterations — and it makes "buy max" exact and deterministic everywhere.
+  while (bulkGeneratorCost(base, r, count, n + 1).lte(budget)) n++
+  while (n > 0 && bulkGeneratorCost(base, r, count, n).gt(budget)) n--
+  return n
 }
 
 // ── Production ────────────────────────────────────────────────────────────
