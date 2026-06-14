@@ -64,8 +64,10 @@ jobs:
       - run: npm run build:itch
       - name: Install butler
         run: |
-          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
-          unzip butler.zip
+          # Official itch.io CDN is broth.itch.zone; resolve LATEST, then fetch that build.
+          VERSION=$(curl -fsSL --retry 5 --retry-all-errors https://broth.itch.zone/butler/linux-amd64/LATEST)
+          curl -fsSL --retry 5 --retry-all-errors -o butler.zip "https://broth.itch.zone/butler/linux-amd64/$VERSION/archive/default"
+          unzip -q butler.zip
           chmod +x butler
           ./butler -V
       - name: Push to itch.io
