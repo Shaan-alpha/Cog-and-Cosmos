@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — production rate / tap stuck after buying (reverted the rates memo)
+- **Buying a generator left the rate readout at `+0.00/s` and the manual gather pinned to +1.** The per-step
+  `stageRates()` memo (a `ratesStamp` `$state` cache) made the StagePanel rate/gather `$derived` depend
+  **only on the sim-loop stamp**, not the stage's generator counts — so a purchase no longer refreshed the
+  readout (and `gatherPreview = max(1, 3·rate)` stayed at 1). **Reverted the memoization**: `stageRates()`
+  reads live state directly again, so the deriveds re-subscribe to the real inputs and update immediately on a
+  buy. Added regression tests — a store-level `stageRates` check and a `StagePanel` mount test that asserts the
+  coin rate changes when a Cottage is bought.
+
 ### Added — Phase 3: Events (claimable buffs)
 - **Events** — every few minutes of active play a claimable "Golden Cog"-style event appears; claiming it
   grants a transient **global-production buff** (e.g. +200% for 30s, +400% for 15s) that folds live into
@@ -125,11 +134,6 @@ new test suite and verified unchanged throughout.
   `unlockNotice` → `pushToast()` stacking-toast note, the two-mode (`cheapest`/`priority`)
   auto-buyer description, and the six-view SPA switch (incl. Transcendence); fixed the README's
   SPA-view row. Docs-only — no code or behaviour change.
-- **`rates()` memoized per sim step.** `stageRates()` now caches each stage's `economy.rates()` behind a
-  reactive `ratesStamp` (`$state`) bumped once per `stepSim`, so the Decimal-heavy rate math runs at most
-  once per stage per step instead of once per stage per render frame (the Statistics panel reads every
-  stage each frame). Reactivity is preserved — the stamp is `$state`, so cache-hit readers still re-derive;
-  rate readouts lag the sim by ≤1 step (50 ms). Guarded by the existing `tick()`/`rates()` parity tests.
 - **Removed dead `getUnlockNotice()` / `clearUnlockNotice()`** store exports — vestigial no-ops left from the
   `unlockNotice` → stacking-toast migration, with zero callers anywhere.
 - **Reconciled MASTER_PLAN's "Balancing & Formula Reference"** with the shipped code. It still presented the

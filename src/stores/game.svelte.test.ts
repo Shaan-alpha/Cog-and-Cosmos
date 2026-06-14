@@ -8,6 +8,7 @@ import {
   realityReset, transcend,
   prestigeStage, collectedRelics,
   tickEvents, claimEvent, activeEventBuff, claimableEvent, eventBuffMult, __forceSpawnEventForTest,
+  stageRates,
 } from './game.svelte'
 
 // Store-layer integration tests: the snapshot-and-restore + reset paths
@@ -110,6 +111,16 @@ describe('transcend (Aether)', () => {
     expect(g.skills.spark).toBeUndefined()      // global tree wiped
     expect(g.skills['tr:wellspring']).toBe(2)   // Aether tree kept
     expect(g.skills['ch:proven']).toBe(2)       // Challenge tree kept
+  })
+})
+
+describe('stageRates reflects generator counts (no stale memo)', () => {
+  it('rises immediately when a generator count changes', () => {
+    __resetStoreForTest()
+    const gs = getState()
+    expect(stageRates('village').primary.toNumber()).toBe(0)   // 0 cottages
+    gs.stages.village.generators.cottage.count = 10
+    expect(stageRates('village').primary.toNumber()).toBeGreaterThan(0)
   })
 })
 
