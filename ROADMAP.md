@@ -61,7 +61,7 @@ Legend: ✅ done · 🔨 in progress · 🔜 next · 📦 planned
 - 📦 Audio: SFX (jsfxr/ChipTone) + chiptune music (Bosca Ceoil/LMMS)
 - 📦 Juice: screen-shake, particle bursts, milestone fanfare
 - 📦 Accessibility + hotkeys
-- 📦 Deploy to **itch.io** + GitHub Pages (free)
+- ✅ Deploy to **itch.io** + GitHub Pages (free) — automated CI/CD (Pages live; itch via butler, secret-gated)
 - **Exit criteria:** public 1.0 release.
 
 ## Post-Launch 📦

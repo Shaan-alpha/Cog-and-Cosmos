@@ -196,6 +196,23 @@ See **[CLAUDE.md](./CLAUDE.md)** for architecture details, the systems map, and 
 
 ---
 
+## ✦ Deploy
+
+Pushing to `main` (or running the **Deploy** workflow manually) builds and publishes the game — no paid infrastructure:
+
+- **GitHub Pages** (always-live): <https://shaan-alpha.github.io/Cog-and-Cosmos/>. The workflow enables Pages automatically on first run; nothing to configure.
+- **itch.io** (optional): publishing activates once you provide your own credentials.
+  1. Create an itch.io project of kind **HTML**; note its `user/game` slug.
+  2. In **Settings → Secrets and variables → Actions**, add:
+     - Variable `ITCH_TARGET` = `<user>/<game>`
+     - Secret `BUTLER_API_KEY` = your itch.io API key (from <https://itch.io/user/settings/api-keys>)
+
+  The itch job is skipped while `ITCH_TARGET` is unset, so the pipeline never fails for lack of itch config.
+
+The CI **verify** gate runs `npm run check` + `npm test` before anything deploys. The app ships under a non-root base, so local production previews use `npm run build && npm run preview` (root base); the Pages/itch bases are applied by `npm run build:pages` / `npm run build:itch`.
+
+---
+
 ## ✦ License
 
 [MIT](./LICENSE) — free to play, fork, and build upon.

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Phase 4: Deploy pipeline (GitHub Pages + itch.io)
+- **Free CI/CD.** A `Deploy` GitHub Actions workflow builds and publishes on every push to `main`
+  (and on manual dispatch): a `verify` gate (`check` + `test`) feeds parallel **GitHub Pages**
+  (always-live at `/Cog-and-Cosmos/`) and **itch.io** (via `butler`) deploys. Pages is auto-enabled;
+  the itch job is gated behind a repo `ITCH_TARGET` variable so it's skipped — never failed — until
+  configured.
+- **Per-target base paths.** `build:pages` (`/Cog-and-Cosmos/`) and `build:itch` (`./`, for itch's
+  iframe) via `vite build --base=…`; the PWA manifest `start_url`/`scope` are now relative so it
+  resolves correctly under both. Dev/preview (`build`) stay at root base.
+
 ### Fixed — test suite broken under the Vite 8 / Vitest 4 toolchain upgrade
 - **`npm test` failed every file with "Vitest failed to find the current suite."** The global
   `resolve.conditions: ['browser']` in `vitest.config.ts` (added so the jsdom UI tests get Svelte's
