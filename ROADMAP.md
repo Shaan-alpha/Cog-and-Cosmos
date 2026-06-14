@@ -59,7 +59,7 @@ Legend: ✅ done · 🔨 in progress · 🔜 next · 📦 planned
 
 - 📦 Full balance pass (spreadsheet-driven, pacing targets from MASTER_PLAN §17)
 - 📦 Audio: SFX (jsfxr/ChipTone) + chiptune music (Bosca Ceoil/LMMS)
-- 📦 Juice: screen-shake, particle bursts, milestone fanfare
+- ✅ Juice: screen-shake, particle bursts, floating number pop-ups, counter bumps, milestone fanfare (+ reduced-motion support)
 - 📦 Accessibility + hotkeys
 - 📦 Deploy to **itch.io** + GitHub Pages (free)
 - **Exit criteria:** public 1.0 release.
