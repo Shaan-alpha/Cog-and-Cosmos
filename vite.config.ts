@@ -16,6 +16,8 @@ export default defineConfig({
         background_color: '#0a0812',
         display: 'standalone',
         orientation: 'any',
+        start_url: './',
+        scope: './',
         categories: ['games', 'entertainment'],
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
