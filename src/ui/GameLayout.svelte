@@ -10,9 +10,11 @@
   import EventBanner from './EventBanner.svelte'
   import SettingsPanel from './SettingsPanel.svelte'
   import StatsPanel from './StatsPanel.svelte'
-  import { fortune, fmt, isStageUnlocked, transcendCount, transcendPreview, omegaCount, omegaPreview, completedChallenges, activeChallenge, anyStageAscended, collectedRelics, getToasts, removeToast } from '../stores/game.svelte'
+  import { fortune, fmt, isStageUnlocked, transcendCount, transcendPreview, omegaCount, omegaPreview, completedChallenges, activeChallenge, anyStageAscended, collectedRelics, getToasts, removeToast, getShakeStamp } from '../stores/game.svelte'
   import { STAGE_ROSTER } from '../data/roster'
   import { toggleMuted, isMuted } from '../systems/audio'
+  import EffectsLayer from './EffectsLayer.svelte'
+  import { bump } from './actions/bump'
 
   // Pixi is purely decorative, so lazy-load it: this keeps pixi.js out of the
   // initial bundle (~loaded as a separate async chunk after first paint) and the
@@ -31,6 +33,24 @@
   const canSeeCollections = $derived(collectedRelics().length > 0)
   const toasts = $derived(getToasts())
 
+  // Screen-shake: watch the effects stamp and run a brief WAAPI shake on the root.
+  let layoutEl = $state<HTMLElement | null>(null)
+  $effect(() => {
+    const s = getShakeStamp()
+    if (s > 0 && layoutEl) {
+      layoutEl.animate(
+        [
+          { transform: 'translate(0,0)' },
+          { transform: 'translate(-3px,2px)' },
+          { transform: 'translate(3px,-2px)' },
+          { transform: 'translate(-2px,1px)' },
+          { transform: 'translate(0,0)' },
+        ],
+        { duration: 240, easing: 'ease-in-out' },
+      )
+    }
+  })
+
   // Mobile: keep the active view button centred in the horizontally-scrollable nav strip.
   let navEl = $state<HTMLElement | null>(null)
   $effect(() => {
@@ -44,7 +64,8 @@
   function onMute() { muted = toggleMuted() }
 </script>
 
-<div class="layout">
+<div class="layout" bind:this={layoutEl}>
+  <EffectsLayer />
   <div class="toast-container" aria-live="polite">
     {#each toasts as t (t.id)}
       <div class="toast frame bracketed" role="status">
@@ -91,7 +112,7 @@
     <div class="mast-right">
       <div class="fortune-readout">
         <span class="fr-star">★</span>
-        <span class="fr-val tnum">{fmt(fort)}</span>
+        <span class="fr-val tnum" use:bump={fort.toNumber()}>{fmt(fort)}</span>
         <span class="fr-label">Fortune</span>
       </div>
       <button class="mute" class:muted onclick={onMute} title={muted ? 'Unmute' : 'Mute'} aria-label="toggle sound">

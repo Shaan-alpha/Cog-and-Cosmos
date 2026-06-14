@@ -791,6 +791,10 @@ export function pushToast(text: string) {
   const id = nextToastId++
   activeToasts = [...activeToasts, { id, text }]
 }
+
+// Re-export the juice effects bus so UI imports from the store like everything else.
+export { emitFloater, emitBurst, shake, getEffects, getShakeStamp, removeEffect } from './effects.svelte'
+
 export function unlockedAchievements() { return gs.unlockedAchievements ?? [] }
 
 export function buyGenerator(stageId: string, genId: string, amount: 1 | 10 | 100 | -1 = 1): boolean {
