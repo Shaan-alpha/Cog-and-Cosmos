@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Cloud Sync (cross-device saves, optional)
+- **Env-gated Supabase Cloud Sync.** A new Settings card backs up / restores the save across
+  devices on the free tier: passwordless **magic-link** auth and **manual, timestamp-guarded
+  Push / Pull** (a push won't clobber a newer cloud copy, and a pull won't clobber a newer local
+  copy, without an explicit "overwrite anyway" confirm; Pull always confirms the destructive swap).
+  New `src/systems/cloud.ts` wraps `@supabase/supabase-js` (dynamically imported, so it stays in a
+  lazy chunk out of the main bundle) and trades only the existing compressed save blob + its
+  version/timestamp. **No save-format change, no version bump** (still v14). The feature self-disables
+  when `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are absent — no secrets are committed and the
+  default build is unaffected. One RLS-guarded row per user (`auth.uid() = user_id`). See the README's
+  “Cloud Sync setup”. Tests: `cloud.test.ts` (env detection + unconfigured no-ops),
+  `cloud.bridge.test.ts` (push/pull branch logic), `cloudsynccard.test.ts` (render-smoke).
+
 ### Fixed — production rate / tap stuck after buying (reverted the rates memo)
 - **Buying a generator left the rate readout at `+0.00/s` and the manual gather pinned to +1.** The per-step
   `stageRates()` memo (a `ratesStamp` `$state` cache) made the StagePanel rate/gather `$derived` depend

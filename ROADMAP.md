@@ -51,7 +51,7 @@ Legend: ✅ done · 🔨 in progress · 🔜 next · 📦 planned
 - ✅ **Collections** (18 relics that drop on resets → passive bonuses + rarity-set bonuses)
 - ✅ **Challenges** (restricted runs → Medals + a Trial tree) — restriction runs live; time/endless deferred
 - ✅ **Mobile/touch UX** (responsive shell + ≥44px touch targets + safe-area); 📦 encyclopedia deferred
-- 📦 Free cloud sync (Supabase/Firebase free tier)
+- ✅ **Free cloud sync** (Supabase free tier) — env-gated, magic-link auth, manual timestamp-guarded Push/Pull; self-disables when unconfigured; no save-format change
 - **Exit criteria:** 100+ hours of meaningful progression; healthy D7 retention in playtests.
 
 ## Phase 4 — Polish & Launch 📦
