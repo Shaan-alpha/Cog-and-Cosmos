@@ -9,6 +9,7 @@
     saveGame
   } from '../stores/game.svelte'
   import { playBuy, playMilestone } from '../systems/audio'
+  import CloudSyncCard from './CloudSyncCard.svelte'
 
   const gameState = $derived(getState())
   const settings = $derived(getSettings())
@@ -203,6 +204,8 @@
           </div>
         </div>
       </section>
+
+      <CloudSyncCard />
 
       <!-- Section 4: Danger Zone -->
       <section class="settings-card frame wide danger-card">

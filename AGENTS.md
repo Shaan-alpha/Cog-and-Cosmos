@@ -71,5 +71,9 @@ Keep names/currencies/formulas consistent with [MASTER_PLAN.md](./MASTER_PLAN.md
 ## Constraints
 
 - **No paid dependencies or services.** Hard requirement.
+- **Optional Cloud Sync** lives in `src/systems/cloud.ts` (env-gated Supabase wrapper, dynamic import,
+  no game logic), bridged by `cloudPush()`/`cloudPull()` in the store and surfaced by
+  `ui/CloudSyncCard.svelte`. It self-disables without `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` —
+  **never commit secrets** (`.env.local` is gitignored), and it does **not** change the save format.
 - Bump `CURRENT_VERSION` + add a `migrate()` step in `SaveManager.ts` whenever `GameState` changes.
 - Verify with `npm run build` before reporting done.

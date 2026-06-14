@@ -5,6 +5,8 @@
 import { StageEconomy } from '../systems/StageEconomy'
 import { FortuneEngine } from '../systems/FortuneEngine'
 import { saveGame, loadGame, exportSave, importSave, consumeRebalanceReset } from '../systems/SaveManager'
+import { isCloudConfigured, currentUser, fetchCloudMeta, pushSave, pullSave } from '../systems/cloud'
+import type { CloudMeta } from '../systems/cloud'
 import { offlineGain, omegaGain } from '../systems/formulas'
 import { recomputeUpgrades, skillCost, prereqsMet, SKILL_BY_ID, ASCENSION_BY_ID, TRANSCEND_BY_ID, OMEGA_BY_ID, CHALLENGE_SKILL_BY_ID } from '../systems/skills'
 import { GLOBAL_SKILLS } from '../data/skills/global'
@@ -1428,16 +1430,71 @@ export function exportActiveSave(): string {
   return exportSave(gs)
 }
 
-export function importActiveSave(encoded: string): boolean {
-  const imported = importSave(encoded)
-  if (!imported) return false
+// Shared swap: replace the live game state, persist, recompute derived multipliers,
+// and rebase the loop clock. Used by both manual Import and Cloud Pull.
+function swapInState(imported: GameState) {
   cancelAnimationFrame(animFrameId)
   gs = imported
   saveGame(gs)
   recomputeUpgrades(gs)
   lastFrameMs = Date.now()
   animFrameId = requestAnimationFrame(tick)
+}
+
+export function importActiveSave(encoded: string): boolean {
+  const imported = importSave(encoded)
+  if (!imported) return false
+  swapInState(imported)
   return true
+}
+
+export type CloudPushResult =
+  | { status: 'ok' }
+  | { status: 'conflict'; cloud: CloudMeta; local: CloudMeta }
+  | { status: 'error'; error: string }
+  | { status: 'unconfigured' }
+  | { status: 'unauthenticated' }
+
+export type CloudPullResult =
+  | { status: 'ok' }
+  | { status: 'empty' }
+  | { status: 'conflict'; cloud: CloudMeta; local: CloudMeta }
+  | { status: 'corrupt' }
+  | { status: 'unconfigured' }
+  | { status: 'unauthenticated' }
+
+// Push the local save to the cloud. Guards against overwriting a NEWER cloud copy
+// (returns 'conflict' without writing) unless { force: true }.
+export async function cloudPush(opts: { force?: boolean } = {}): Promise<CloudPushResult> {
+  if (!isCloudConfigured()) return { status: 'unconfigured' }
+  if (!(await currentUser())) return { status: 'unauthenticated' }
+  const blob = exportSave(gs)                 // also refreshes gs.saveTimestamp
+  const local: CloudMeta = { saveVersion: gs.version, saveTimestamp: gs.saveTimestamp }
+  if (!opts.force) {
+    const meta = await fetchCloudMeta()
+    if (meta && meta.saveTimestamp > gs.saveTimestamp) return { status: 'conflict', cloud: meta, local }
+  }
+  const res = await pushSave({ blob, saveVersion: gs.version, saveTimestamp: gs.saveTimestamp })
+  if (res.ok) { pushToast('☁ Progress pushed to cloud'); return { status: 'ok' } }
+  return { status: 'error', error: res.error ?? 'Push failed.' }
+}
+
+// Pull the cloud save and replace local. Guards against overwriting a NEWER local
+// copy (returns 'conflict' without swapping) unless { force: true }.
+export async function cloudPull(opts: { force?: boolean } = {}): Promise<CloudPullResult> {
+  if (!isCloudConfigured()) return { status: 'unconfigured' }
+  if (!(await currentUser())) return { status: 'unauthenticated' }
+  const cloud = await pullSave()
+  if (!cloud) return { status: 'empty' }
+  const local: CloudMeta = { saveVersion: gs.version, saveTimestamp: gs.saveTimestamp }
+  if (!opts.force && gs.saveTimestamp > cloud.saveTimestamp) {
+    return { status: 'conflict', cloud: { saveVersion: cloud.saveVersion, saveTimestamp: cloud.saveTimestamp }, local }
+  }
+  const imported = importSave(cloud.blob)
+  if (!imported) return { status: 'corrupt' }
+  swapInState(imported)
+  pushToast('☁ Progress pulled from cloud')
+  return { status: 'ok' }
 }
 
 export { STAGE_DEFS, saveGame }

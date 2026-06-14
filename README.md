@@ -87,6 +87,43 @@ Requires **Node 20.19+ or 22.12+** (Vite 8). No paid services, no API keys, no a
 
 ---
 
+## ✦ Cloud Sync setup (optional)
+
+Cloud Sync is **off by default** and needs a free Supabase project. Without the two env vars
+below, the Settings card shows "not configured" and nothing changes — the game stays a pure,
+offline-first PWA.
+
+1. Create a free project at [supabase.com](https://supabase.com). From **Settings → API**, copy
+   the **Project URL** and the **anon / publishable** key.
+2. Copy `.env.example` to `.env.local` and fill in:
+   ```
+   VITE_SUPABASE_URL=https://<your-project>.supabase.co
+   VITE_SUPABASE_ANON_KEY=<your-anon-key>
+   ```
+   (`.env.local` is gitignored — never commit keys. The anon key is safe in a client; row-level
+   security enforces per-user isolation.)
+3. In the Supabase **SQL Editor**, create the table + row-level security:
+   ```sql
+   create table public.saves (
+     user_id        uuid primary key references auth.users (id) on delete cascade,
+     blob           text        not null,
+     save_version   integer     not null,
+     save_timestamp bigint      not null,
+     updated_at     timestamptz not null default now()
+   );
+   alter table public.saves enable row level security;
+   create policy "own row select" on public.saves for select using (auth.uid() = user_id);
+   create policy "own row insert" on public.saves for insert with check (auth.uid() = user_id);
+   create policy "own row update" on public.saves for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+   ```
+4. In **Authentication → URL Configuration**, add your app origin(s) (e.g. `http://localhost:5173`
+   and your deployed URL) to **Redirect URLs**, and ensure email sending is enabled.
+5. `npm run dev` → **Settings → Cloud Sync** → enter your email → click the magic link → **Push**.
+   On another device, sign in with the same email and **Pull**. Push won't overwrite a newer cloud
+   save (and Pull won't overwrite a newer local save) without an explicit "overwrite anyway" confirm.
+
+---
+
 ## ✦ How it plays
 
 1. **Buy Cottages** — they trickle out Coins (¢).

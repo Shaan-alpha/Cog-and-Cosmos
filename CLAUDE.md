@@ -130,7 +130,8 @@ src/
 │   ├── FortuneEngine.ts    mints ★ from stage surpluses; manages 8 slots.
 │   ├── skills.ts           skill cost / prereqs / recomputeUpgrades() (derives globalMult + engineMult)
 │   ├── audio.ts            synthesized Web-Audio SFX (no files): playBuy/playMilestone/playPrestige + mute
-│   └── SaveManager.ts      IndexedDB+localStorage, lz-string, versioned migrate() (currently v14)
+│   ├── SaveManager.ts      IndexedDB+localStorage, lz-string, versioned migrate() (currently v14)
+│   └── cloud.ts            OPTIONAL Cloud Sync: env-gated Supabase wrapper (dynamic import; no game logic). Bridged by cloudPush()/cloudPull() in the store; UI is ui/CloudSyncCard.svelte. No save-format change.
 ├── stores/
 │   └── game.svelte.ts      the ONE reactive store + the 20 Hz fixed-step loop. Bridges systems ↔ UI.
 ├── ui/                     Svelte components — render-only, read store accessors.
