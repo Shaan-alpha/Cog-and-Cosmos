@@ -200,7 +200,7 @@ See **[CLAUDE.md](./CLAUDE.md)** for architecture details, the systems map, and 
 
 Pushing to `main` (or running the **Deploy** workflow manually) builds and publishes the game — no paid infrastructure:
 
-- **GitHub Pages** (always-live): <https://shaan-alpha.github.io/Cog-and-Cosmos/>. The workflow enables Pages automatically on first run; nothing to configure.
+- **GitHub Pages** (always-live): <https://shaan-alpha.github.io/Cog-and-Cosmos/>. Pages is enabled with the **GitHub Actions** source, so every push to `main` redeploys automatically. (One-time on a fork: if the workflow's `configure-pages` can't auto-enable Pages, turn it on once in **Settings → Pages → Source: GitHub Actions**.)
 - **itch.io** (optional): publishing activates once you provide your own credentials.
   1. Create an itch.io project of kind **HTML**; note its `user/game` slug.
   2. In **Settings → Secrets and variables → Actions**, add:
