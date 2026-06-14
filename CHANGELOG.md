@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — test suite broken under the Vite 8 / Vitest 4 toolchain upgrade
+- **`npm test` failed every file with "Vitest failed to find the current suite."** The global
+  `resolve.conditions: ['browser']` in `vitest.config.ts` (added so the jsdom UI tests get Svelte's
+  client build for `mount()`) leaked into the node-env core pool and resolved `@vitest/runner` — which
+  ships a `browser` export — to a **second module instance**, so `describe`/`it` registered on a
+  collector with no current suite. It only surfaced once enough files ran in parallel to expose the
+  duplicate-instance race (single-file / `--no-file-parallelism` runs passed, which is why the
+  regression slipped through the Vite 8 + TS 6 upgrade). **Fix:** split Vitest into two isolated
+  **projects** — `core` (node, no browser condition → single runner instance) and `ui` (jsdom + browser
+  condition → Svelte client build). Suite is green and stable again (138 tests, verified across repeated
+  parallel runs with a cleared Vite cache).
+
 ### Added — Cloud Sync (cross-device saves, optional)
 - **Env-gated Supabase Cloud Sync.** A new Settings card backs up / restores the save across
   devices on the free tier: passwordless **magic-link** auth and **manual, timestamp-guarded
