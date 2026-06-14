@@ -198,6 +198,48 @@ body::after {
 
 .animate-fade { animation: fade-in 0.2s var(--ease-out) forwards; }
 
+/* ── Juice / game-feel effects (rendered by ui/EffectsLayer.svelte) ───────── */
+.fx-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 60; }
+
+.fx-floater {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+  animation: floater-rise 0.9s var(--ease-out) forwards;
+  will-change: transform, opacity;
+}
+
+.fx-burst { position: absolute; width: 0; height: 0; animation: burst-life 0.7s linear forwards; }
+.fx-particle {
+  position: absolute; top: 0; left: 0;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--brass-bright);
+  transform-origin: 0 0;
+  animation: burst-fly 0.7s var(--ease-out) forwards;
+  will-change: transform, opacity;
+}
+.fx-particle.star { background: var(--brass-bright); box-shadow: 0 0 6px var(--brass-glow); }
+
+@keyframes floater-rise {
+  0%   { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
+  20%  { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+}
+@keyframes burst-life { 0% { opacity: 1; } 100% { opacity: 1; } }   /* lifetime carrier; fires animationend */
+@keyframes burst-fly {
+  0%   { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)) scale(0.3); }
+}
+
+/* First reduced-motion support in the app: effects still emit + self-clean, but
+   collapse to an instant flash instead of moving. (shake/bump are gated off in juice.ts.) */
+@media (prefers-reduced-motion: reduce) {
+  .fx-floater, .fx-burst, .fx-particle { animation-duration: 0.01ms !important; }
+}
+
 /* ── Stage dashboard components ───────────────────────────────────────────── */
 /* Shared by the per-stage panel tabs (Enchants / Warp / Duplication). They read
    the inherited --sc stage accent, so they style correctly inside any stage panel. */
