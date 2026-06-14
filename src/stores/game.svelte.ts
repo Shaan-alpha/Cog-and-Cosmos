@@ -19,6 +19,7 @@ import { RELICS, RELIC_BY_ID, type RelicRarity } from '../data/collections'
 import { EVENTS, EVENT_BY_ID } from '../data/events'
 import { ACHIEVEMENTS } from '../data/achievements'
 import { playTranscend } from '../systems/audio'
+import { shake } from './effects.svelte'
 import { D, ONE, ZERO, fmt as baseFmt, type Dec } from '../systems/Decimal'
 import type { GameState, StageState } from '../data/types'
 import villageDef from '../data/stages/village'
@@ -810,7 +811,7 @@ export function prestigeStage(stageId: string): number {
   const st = gs.stages[stageId]
   if (!economy || !st) return 0
   const gain = economy.prestige(st)
-  if (gain > 0) grantDrop('common', RELIC_DROP.common)
+  if (gain > 0) { grantDrop('common', RELIC_DROP.common); shake() }
   return gain
 }
 
@@ -849,6 +850,7 @@ export function ascendStage(stageId: string): number {
   if (gain > 0) {
     gs.legacyPoints += gain
     grantDrop('uncommon', RELIC_DROP.uncommon)
+    shake()
     saveGame(gs).catch(console.error)
   }
   return gain
@@ -1180,6 +1182,7 @@ export function transcend(): boolean {
   gs.aetherLifetime = (gs.aetherLifetime ?? 0) + pending
 
   grantDrop('rare', RELIC_DROP.rare)
+  shake()
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
   return true
@@ -1318,6 +1321,7 @@ export function realityReset(): boolean {
   gs.omegaLifetime = (gs.omegaLifetime ?? 0) + pending
 
   grantDrop('legendary', RELIC_DROP.legendary)
+  shake()
   recomputeUpgrades(gs)
   saveGame(gs).catch(console.error)
   return true
