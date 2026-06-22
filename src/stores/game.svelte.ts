@@ -4,7 +4,7 @@
  */
 import { StageEconomy } from '../systems/StageEconomy'
 import { FortuneEngine } from '../systems/FortuneEngine'
-import { saveGame, loadGame, exportSave, importSave, consumeRebalanceReset, consumeLoadError } from '../systems/SaveManager'
+import { saveGame, loadGame, exportSave, importSave, consumeRebalanceReset, consumeLoadError, CURRENT_VERSION } from '../systems/SaveManager'
 import { isCloudConfigured, currentUser, fetchCloudMeta, pushSave, pullSave } from '../systems/cloud'
 import type { CloudMeta } from '../systems/cloud'
 import { offlineGain, omegaGain } from '../systems/formulas'
@@ -65,7 +65,7 @@ const fortuneEngine = new FortuneEngine()
 // ── Fresh game state ────────────────────────────────────────────────────────
 function freshGameState(): GameState {
   const state: GameState = {
-    version: 10,
+    version: CURRENT_VERSION,
     saveTimestamp: Date.now(),
     stages: {
       village: STAGE_ECONOMIES.village.freshState(),

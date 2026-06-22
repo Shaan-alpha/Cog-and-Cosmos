@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Hardened — deep-audit robustness pass (no behaviour change)
+- **UI error boundary.** Wrapped the live game (`GameLayout`) in a Svelte `<svelte:boundary>`: a
+  render-time throw in any panel now shows a small inline "reload the view" fallback instead of
+  white-screening the whole app (a second "must refresh" vector). The sim loop runs independently and
+  keeps ticking/saving underneath.
+- **Engine is guaranteed on load.** `sanitizeState` now creates a default `engine` (and coerces
+  `fortuneLifetime`/`engineMult`/`slots`) when a loaded/imported save lacks one — previously
+  `applyOfflineProgress`/`recomputeUpgrades` read `state.engine` before the store's own guard and would
+  blank the page on such a save.
+- **Fresh saves stamp the real version.** `freshGameState()` now uses `CURRENT_VERSION` (was a stale
+  hard-coded `10`), so a brand-new game can never be mistakenly re-migrated by a future non-additive
+  migration step.
+
 ### Fixed — Game loop could permanently brick (stages stuck · stars stop · no save · auto-buy dead)
 - **Root cause: a single thrown exception in any sim frame killed `requestAnimationFrame` forever.**
   `tick()` rescheduled the next frame on its *last* line, so a throw in `stepSim()`/`checkUnlocks()`

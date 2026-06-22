@@ -30,7 +30,18 @@
     {#if summary}
       <OfflineSummary {summary} onClose={() => { clearOfflineSummary(); summary = null }} />
     {/if}
-    <GameLayout />
+    <!-- A render-time throw in any panel is contained here instead of white-screening the
+         whole app (which forced a refresh). The sim loop runs independently and keeps going. -->
+    <svelte:boundary onerror={(e) => console.error('[ui] render error (contained):', e)}>
+      <GameLayout />
+      {#snippet failed(_error, reset)}
+        <div class="ui-error">
+          <p class="ui-error-title">A panel hit a snag.</p>
+          <p class="ui-error-sub">Your game is still running and saving in the background.</p>
+          <button class="ui-error-btn" onclick={reset}>Reload the view</button>
+        </div>
+      {/snippet}
+    </svelte:boundary>
   {/if}
 </div>
 
@@ -91,5 +102,36 @@
     font-style: italic;
     font-size: 1rem;
     color: var(--parchment-dim);
+  }
+
+  .ui-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 0.5rem;
+    text-align: center;
+    padding: 1rem;
+  }
+  .ui-error-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    color: var(--brass-bright);
+  }
+  .ui-error-sub {
+    font-family: var(--font-flavor);
+    font-style: italic;
+    color: var(--parchment-dim);
+  }
+  .ui-error-btn {
+    margin-top: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-family: var(--font-display);
+    color: var(--ink-900);
+    background: var(--brass);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
   }
 </style>

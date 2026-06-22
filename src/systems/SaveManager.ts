@@ -8,7 +8,7 @@ import type { GameState } from '../data/types'
 import { D, Decimal } from './Decimal'
 
 const SAVE_KEY = 'cog_cosmos_save'
-const CURRENT_VERSION = 15
+export const CURRENT_VERSION = 15
 // Saves older than this predate the v5 economy rebalance (milestone ×8→×2, steeper
 // cost growth). Their banked currency was earned on the old runaway curve, so they
 // are intentionally discarded on load rather than migrated — a clean slate on the
@@ -73,9 +73,15 @@ function sanitizeState(state: any): GameState {
     }
   }
 
-  if (state.engine) {
-    state.engine.fortune = ensureDecimal(state.engine.fortune)
+  // Engine must always exist: offline-progress + recomputeUpgrades read it before the
+  // store's own guard runs, so a missing engine would blank the page / throw on import.
+  if (!state.engine) {
+    state.engine = { fortune: ZERO, fortuneLifetime: ZERO, slots: ['village'], engineMult: D(1) } as GameState['engine']
   }
+  state.engine.fortune = ensureDecimal(state.engine.fortune)
+  state.engine.fortuneLifetime = ensureDecimal(state.engine.fortuneLifetime)
+  state.engine.engineMult = ensureDecimal(state.engine.engineMult)
+  if (!Array.isArray(state.engine.slots)) state.engine.slots = ['village']
 
   if (state.activeEnchants) {
     for (const enc of state.activeEnchants) {
