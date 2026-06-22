@@ -23,7 +23,9 @@
   const getCount  = () => stageState(stageId)?.generators?.[visualGen]?.count ?? 0
   const getAmount = () => stageState(stageId)?.primaryAmount?.toNumber() ?? 0
 
-  interface Pop { x: number; y: number; text: string; life: number; vx: number; vy: number }
+  // Each pop owns its Text node (created once on spawn, updated in place, destroyed on
+  // death) — mirrors the particle pattern. Never recreate Text per frame (alloc churn).
+  interface Pop { t: Text; x: number; y: number; life: number; vx: number; vy: number }
   let pops: Pop[] = []
   const popStyle = new TextStyle({ fill: '#ffd76b', fontSize: 11, fontFamily: 'Spline Sans Mono, monospace' })
 
@@ -546,27 +548,38 @@
         }
       }
 
-      // number-pops
+      // number-pops — spawn at most one Text per 0.7s, then update in place each frame.
       popTimer += dt
       const cur = getAmount(); const delta = cur - lastAmount; lastAmount = cur
       if (delta > 0.01 && popTimer > 0.7) {
         popTimer = 0
-        pops.push({ x: 60 + Math.random() * 100, y: (isMine ? 200 : 240) + Math.random() * 40, text: '+' + fmt(delta), life: 1.4, vx: (Math.random() - 0.5) * 16, vy: -34 })
-      }
-      popLayer.removeChildren()
-      pops = pops.filter(p => p.life > 0)
-      for (const p of pops) {
-        p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt
-        const t = new Text({ text: p.text, style: popStyle })
-        t.x = p.x; t.y = p.y; t.alpha = Math.max(0, p.life / 1.4)
+        const px = 60 + Math.random() * 100
+        const py = (isMine ? 200 : 240) + Math.random() * 40
+        const t = new Text({ text: '+' + fmt(delta), style: popStyle })
+        t.x = px; t.y = py
         popLayer.addChild(t)
+        pops.push({ t, x: px, y: py, life: 1.4, vx: (Math.random() - 0.5) * 16, vy: -34 })
+      }
+      for (let i = pops.length - 1; i >= 0; i--) {
+        const p = pops[i]
+        p.life -= dt
+        if (p.life <= 0) { popLayer.removeChild(p.t); p.t.destroy(); pops.splice(i, 1); continue }
+        p.x += p.vx * dt; p.y += p.vy * dt
+        p.t.x = p.x; p.t.y = p.y; p.t.alpha = Math.max(0, p.life / 1.4)
       }
     })
   }
 
   let cloudRefs: Container[] = []
   onMount(() => { initPixi() })
-  onDestroy(() => { app?.destroy() })
+  onDestroy(() => {
+    // The canvas is keyed on stageId (GameLayout), so it remounts on every stage switch.
+    // Destroy the stage's children + their GPU textures too, or they leak per switch.
+    // removeView:false — Svelte owns the <canvas> element and unmounts it itself.
+    app?.destroy(false, { children: true, texture: true })
+    app = null
+    pops = []; particles = []; stars = []; flickers = []; cloudRefs = []
+  })
 </script>
 
 <canvas bind:this={canvasEl} class="pixi-canvas"></canvas>

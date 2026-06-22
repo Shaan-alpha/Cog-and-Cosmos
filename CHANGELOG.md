@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Hardened — deep-audit robustness pass (no behaviour change)
+- **Pixi decorative layer no longer leaks or allocates per frame.** `PixiCanvas` is keyed on the
+  stage (it remounts on every stage switch), and `app.destroy()` was called with no options — leaking
+  the stage's Graphics/Text **GPU textures** on each switch. It now destroys children + textures
+  (`destroy(false, { children: true, texture: true })`) and nulls its pools. The per-frame number-pop
+  render also stopped recreating a `Text` node every frame (`removeChildren()` + `new Text()`); each pop
+  now owns one `Text`, updated in place and destroyed on death — matching the particle pattern. Honours
+  CLAUDE.md rule #4 (never allocate in hot loops; no overheating).
 - **Single source of truth for starvation/throttle previews.** `StagePanel` no longer re-derives
   Space input-chain demands, Magic familiar upkeep, or the Time paradox throttle in the UI (which
   duplicated `StageEconomy`/`formulas` coefficients and could silently drift). It now reads the SAME
