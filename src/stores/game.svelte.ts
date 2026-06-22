@@ -4,7 +4,7 @@
  */
 import { StageEconomy } from '../systems/StageEconomy'
 import { FortuneEngine } from '../systems/FortuneEngine'
-import { saveGame, loadGame, exportSave, importSave, consumeRebalanceReset } from '../systems/SaveManager'
+import { saveGame, loadGame, exportSave, importSave, consumeRebalanceReset, consumeLoadError } from '../systems/SaveManager'
 import { isCloudConfigured, currentUser, fetchCloudMeta, pushSave, pullSave } from '../systems/cloud'
 import type { CloudMeta } from '../systems/cloud'
 import { offlineGain, omegaGain } from '../systems/formulas'
@@ -754,29 +754,41 @@ function checkUnlocks() {
   }
 }
 
+let loopErrorCount = 0
 function tick(nowMs: number) {
-  let frameDt = (nowMs - lastFrameMs) / 1000
-  lastFrameMs = nowMs
-  if (frameDt > 0.5) frameDt = 0.5       // tab was backgrounded; big gaps are handled by offline-progress
-  accumulator += frameDt
+  // The whole body is wrapped so that a throw in ANY single frame can never stop the
+  // loop. Before this guard, an exception in stepSim()/checkUnlocks() skipped the
+  // requestAnimationFrame() below and silently bricked the game forever — which looked
+  // like "stages don't unlock / stars stop / autosave dies / auto-buy dies" all at once,
+  // and forced a page refresh (losing any progress since the last 30 s autosave).
+  try {
+    let frameDt = (nowMs - lastFrameMs) / 1000
+    lastFrameMs = nowMs
+    if (frameDt > 0.5) frameDt = 0.5       // tab was backgrounded; big gaps are handled by offline-progress
+    accumulator += frameDt
 
-  let steps = 0
-  while (accumulator >= SIM_STEP && steps < MAX_CATCHUP_STEPS) {
-    stepSim(SIM_STEP)
-    accumulator -= SIM_STEP
-    steps++
+    let steps = 0
+    while (accumulator >= SIM_STEP && steps < MAX_CATCHUP_STEPS) {
+      stepSim(SIM_STEP)
+      accumulator -= SIM_STEP
+      steps++
+    }
+    if (steps >= MAX_CATCHUP_STEPS) accumulator = 0  // drop backlog rather than chase it forever
+
+    if (steps > 0) checkUnlocks()
+
+    // Auto-save on wall-clock cadence
+    if (nowMs - lastSaveMs > (gs.settings?.autoSaveInterval ?? 30_000)) {
+      lastSaveMs = nowMs
+      saveGame(gs).catch(console.error)
+    }
+  } catch (e) {
+    // Log the first few occurrences (avoid console spam if a frame throws every tick),
+    // but ALWAYS keep the loop alive via the finally below.
+    if (loopErrorCount++ < 5) console.error('[game loop] recovered from tick error:', e)
+  } finally {
+    animFrameId = requestAnimationFrame(tick)
   }
-  if (steps >= MAX_CATCHUP_STEPS) accumulator = 0  // drop backlog rather than chase it forever
-
-  if (steps > 0) checkUnlocks()
-
-  // Auto-save on wall-clock cadence
-  if (nowMs - lastSaveMs > gs.settings.autoSaveInterval) {
-    lastSaveMs = nowMs
-    saveGame(gs).catch(console.error)
-  }
-
-  animFrameId = requestAnimationFrame(tick)
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -1444,6 +1456,7 @@ export function exportActiveSave(): string {
 // and rebase the loop clock. Used by both manual Import and Cloud Pull.
 function swapInState(imported: GameState) {
   cancelAnimationFrame(animFrameId)
+  hydrateStages(imported)   // repair shape (missing stages/generators) before it goes live
   gs = imported
   saveGame(gs)
   recomputeUpgrades(gs)
@@ -1630,19 +1643,36 @@ export function buyLocalSkill(nodeId: string, stageId: string): boolean {
 
 // ── Initialise ─────────────────────────────────────────────────────────────
 
+/** Repair a loaded save so its shape always matches the current stage defs:
+ *  backfill any missing stage AND any missing generator entry within a stage.
+ *  A save predating an added generator otherwise has `state.generators[id] === undefined`,
+ *  which threw on the first tick and killed the game loop. */
+function hydrateStages(state: GameState): void {
+  if (!state.stages) state.stages = {} as GameState['stages']
+  for (const [sid, economy] of Object.entries(STAGE_ECONOMIES)) {
+    const fresh = economy.freshState()
+    const st = state.stages[sid]
+    if (!st) {
+      state.stages[sid] = fresh
+      continue
+    }
+    if (!st.generators) st.generators = {}
+    for (const g of economy.def.generators) {
+      if (!st.generators[g.id]) {
+        st.generators[g.id] = { id: g.id, count: 0, totalProduced: ZERO }
+      }
+    }
+  }
+}
+
 export async function initGame() {
   if (initialized) return
   const saved = await loadGame()
   if (saved) {
+    hydrateStages(saved)   // repair shape BEFORE offline progress reads rates()
     const elapsed = Date.now() - saved.saveTimestamp
     offlineSummary = applyOfflineProgress(saved, elapsed)
     gs = saved
-    // ensure all stage economies exist even for stages added after save
-    for (const [sid, economy] of Object.entries(STAGE_ECONOMIES)) {
-      if (!gs.stages[sid]) {
-        gs.stages[sid] = economy.freshState()
-      }
-    }
     if (!gs.engine) gs.engine = fortuneEngine.freshState()
     if (!gs.skills) gs.skills = {}
     if (!gs.activeEnchants) gs.activeEnchants = []
@@ -1652,6 +1682,10 @@ export async function initGame() {
     if (!gs.convergenceMult) gs.convergenceMult = ONE
     if (gs.legacyPoints == null) gs.legacyPoints = 0
     recomputeUpgrades(gs)  // rebuild globalMult / engineMult from saved skill levels
+  } else if (consumeLoadError()) {
+    // A save existed but couldn't be read — a backup of the raw blob was kept so it's
+    // not lost. Warn the player rather than silently dropping them into a fresh game.
+    pushToast('⚠️ Your save could not be read. A backup was kept and a fresh game started — your old data was not overwritten.')
   } else if (consumeRebalanceReset()) {
     // A pre-v5 save was discarded for the economy rebalance — tell the player why.
     pushToast('⚙️ Economy rebalanced — the grind is slower and fairer now. Fresh save started.')

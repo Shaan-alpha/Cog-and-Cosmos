@@ -42,6 +42,37 @@ describe('freshState', () => {
   })
 })
 
+describe('resilience to malformed saved state (missing generator entries)', () => {
+  // A save created before a generator was added to a stage def — or a degenerate
+  // save with `generators: {}` (see SaveManager round-trip test) — must NOT throw
+  // when ticked. A throw here in the live loop kills requestAnimationFrame forever,
+  // which simultaneously breaks ticking, unlocks, autosave and auto-buy.
+  it('tick() does not throw when a generator entry is missing', () => {
+    const s = village.freshState()
+    s.generators = {} as StageState['generators'] // simulate an old/degenerate save
+    expect(() => village.tick(s, 1, ONE)).not.toThrow()
+  })
+  it('rates() does not throw when a generator entry is missing', () => {
+    const s = village.freshState()
+    s.generators = {} as StageState['generators']
+    expect(() => village.rates(s, ONE)).not.toThrow()
+  })
+  it('still produces from the generators that DO exist', () => {
+    const s = village.freshState()
+    // keep only cottage; drop every other generator entry
+    s.generators = { cottage: { id: 'cottage', count: 10, totalProduced: ZERO } } as StageState['generators']
+    const gained = village.tick(s, 1, ONE).toNumber()
+    expect(gained).toBeGreaterThan(0)
+  })
+  it('autoBuyTick() does not throw with missing generator entries', () => {
+    const s = village.freshState()
+    s.prestigeCount = 1
+    s.primaryAmount = D(1e9)
+    s.generators = {} as StageState['generators']
+    expect(() => village.autoBuyTick(s, ONE)).not.toThrow()
+  })
+})
+
 describe('buy', () => {
   it('deducts the single cost and increments the count', () => {
     const s = village.freshState()

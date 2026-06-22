@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Game loop could permanently brick (stages stuck · stars stop · no save · auto-buy dead)
+- **Root cause: a single thrown exception in any sim frame killed `requestAnimationFrame` forever.**
+  `tick()` rescheduled the next frame on its *last* line, so a throw in `stepSim()`/`checkUnlocks()`
+  skipped it and silently stopped the entire loop. With the loop dead, **no stage unlocked, no Fortune
+  minted in real time, autosave never ran, and auto-buy never fired** — all at once — and the only
+  recovery was a page refresh, which lost any progress since the last 30 s autosave. The loop body is
+  now wrapped so the next frame is **always** scheduled (in a `finally`), with throttled error logging.
+- **The actual trigger: saves missing generator entries.** A save predating an added generator (or a
+  degenerate `generators: {}` state) left `state.generators[id]` undefined; the first tick did
+  `…[id].count` → `TypeError` → loop death. `StageEconomy` (`tick`/`rates`/`autoBuyTick`/`buy`/cost
+  reads) now treats a missing entry as count 0, and **`initGame`/state-swap hydrate every stage with all
+  its generators** on load (it previously backfilled missing *stages* only, never missing *generators*).
+- **Refreshing no longer eats progress.** When a save blob exists but can't be parsed, `loadGame` now
+  **preserves the raw blob** under a backup key (instead of returning null and letting the fresh game's
+  next autosave overwrite it) and warns the player via a toast (`getCorruptBackup()` exposes it).
+- Regression tests: `StageEconomy` no longer throws on missing generator entries (tick/rates/autoBuy).
+
 ### Added — Phase 4: Deploy pipeline (GitHub Pages + itch.io)
 - **Free CI/CD.** A `Deploy` GitHub Actions workflow builds and publishes on every push to `main`
   (and on manual dispatch): a `verify` gate (`check` + `test`) feeds parallel **GitHub Pages**

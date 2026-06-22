@@ -102,7 +102,7 @@ export class StageEconomy {
   ): { cmPrimary: Decimal; cmSecondary: Decimal } {
     let stageSpecificMult = ONE
     for (const gdef of this.def.generators) {
-      if (gdef.globalStageMult && state.generators[gdef.id].count >= 1) {
+      if (gdef.globalStageMult && (state.generators[gdef.id]?.count ?? 0) >= 1) {
         stageSpecificMult = stageSpecificMult.mul(gdef.globalStageMult)
       }
     }
@@ -286,7 +286,7 @@ export class StageEconomy {
       for (const gdef of this.def.generators) {
         if (state.prestigeCount < gdef.unlockAt) continue
         if (state.autoBuyVault?.includes(gdef.id)) continue
-        const cost = generatorCost(gdef.baseCost, gdef.costGrowth, state.generators[gdef.id].count)
+        const cost = generatorCost(gdef.baseCost, gdef.costGrowth, state.generators[gdef.id]?.count ?? 0)
         if (cost.gt(spendable)) continue
         if (bestCost === null || cost.lt(bestCost)) {
           bestCost = cost
@@ -307,7 +307,7 @@ export class StageEconomy {
       if (state.prestigeCount < gdef.unlockAt) continue
       if (state.autoBuyVault?.includes(gdef.id)) continue
 
-      const count = state.generators[gdef.id].count
+      const count = state.generators[gdef.id]?.count ?? 0
       const cost = generatorCost(gdef.baseCost, gdef.costGrowth, count)
       if (cost.gt(spendable)) continue
 
@@ -366,7 +366,7 @@ export class StageEconomy {
     let labor = 0
     for (const gdef of this.def.generators) {
       const gs = state.generators[gdef.id]
-      if (gs.count === 0) continue
+      if (!gs || gs.count === 0) continue   // missing entry (old save) → treat as count 0
       const tierMult = milestoneMult(gs.count)
       const out = this._produceGen(gdef, gs.count, tierMult, f, dt, skills)
       primaryGained = primaryGained.add(out.primary)
@@ -483,7 +483,7 @@ export class StageEconomy {
     let labor = ZERO
     for (const gdef of this.def.generators) {
       const gs = state.generators[gdef.id]
-      if (gs.count === 0) continue
+      if (!gs || gs.count === 0) continue   // missing entry (old save) → treat as count 0
       const out = this._produceGen(gdef, gs.count, milestoneMult(gs.count), f, 1, skills)
       primary = primary.add(out.primary)
       secondary = secondary.add(out.secondary)
@@ -499,7 +499,7 @@ export class StageEconomy {
 
   currentCost(state: StageState, genId: string, amount = 1): Decimal {
     const gdef = this._gdef(genId)
-    const count = state.generators[genId].count
+    const count = state.generators[genId]?.count ?? 0
     if (amount === -1) {
       const actualAmount = maxAffordable(gdef.baseCost, gdef.costGrowth, count, state.primaryAmount)
       if (actualAmount === 0) return generatorCost(gdef.baseCost, gdef.costGrowth, count)
@@ -513,9 +513,10 @@ export class StageEconomy {
   canAfford(state: StageState, genId: string, amount = 1): boolean {
     const gdef = this._gdef(genId)
     if (state.prestigeCount < gdef.unlockAt) return false
+    const count = state.generators[genId]?.count ?? 0
     const cost = amount === 1
-      ? generatorCost(gdef.baseCost, gdef.costGrowth, state.generators[genId].count)
-      : bulkGeneratorCost(gdef.baseCost, gdef.costGrowth, state.generators[genId].count, amount)
+      ? generatorCost(gdef.baseCost, gdef.costGrowth, count)
+      : bulkGeneratorCost(gdef.baseCost, gdef.costGrowth, count, amount)
     return state.primaryAmount.gte(cost)
   }
 
@@ -523,7 +524,9 @@ export class StageEconomy {
     const gdef = this._gdef(genId)
     if (state.prestigeCount < gdef.unlockAt) return false
 
-    const gs = state.generators[genId]
+    // Self-heal a missing entry (old save predating this generator).
+    let gs = state.generators[genId]
+    if (!gs) gs = state.generators[genId] = { id: genId, count: 0, totalProduced: ZERO }
     let cost: Decimal
     let actualAmount = amount
 

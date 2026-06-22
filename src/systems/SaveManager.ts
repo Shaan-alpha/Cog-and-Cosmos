@@ -213,6 +213,17 @@ export function consumeRebalanceReset(): boolean {
   return v
 }
 
+// Set when loadGame finds a save blob it CANNOT read (corrupt/partial write). The raw
+// blob is preserved under SAVE_KEY + '_corrupt_backup' so progress is never silently
+// destroyed by the next autosave; the UI surfaces this so the player knows.
+const CORRUPT_BACKUP_KEY = SAVE_KEY + '_corrupt_backup'
+let wasLoadError = false
+export function consumeLoadError(): boolean {
+  const v = wasLoadError
+  wasLoadError = false
+  return v
+}
+
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -238,7 +249,7 @@ export async function loadGame(): Promise<GameState | null> {
   if (!compressed) return null
   try {
     const json = LZString.decompressFromUTF16(compressed)
-    if (!json) return null
+    if (!json) throw new Error('decompression returned empty — blob is corrupt')
     const parsed = JSON.parse(json, reviver) as GameState
     // Pre-rebalance saves are intentionally wiped (see RESET_BELOW_VERSION). Returning
     // null makes initGame start a fresh game on the new curve.
@@ -249,9 +260,26 @@ export async function loadGame(): Promise<GameState | null> {
     }
     return migrate(parsed)
   } catch (e) {
-    console.error('[SaveManager] Failed to parse save:', e)
+    // A real save existed but couldn't be read. Preserve the raw blob so the imminent
+    // fresh-game autosave can't silently destroy recoverable progress, and flag the UI.
+    console.error('[SaveManager] Failed to parse save — preserving a backup copy:', e)
+    wasLoadError = true
+    try {
+      await idbSet(CORRUPT_BACKUP_KEY, compressed)
+    } catch {
+      try { localStorage.setItem(CORRUPT_BACKUP_KEY, compressed) } catch { /* ignore */ }
+    }
     return null
   }
+}
+
+/** Recover a previously-backed-up corrupt save blob (raw compressed string), if any. */
+export async function getCorruptBackup(): Promise<string | null> {
+  try {
+    const v = await idbGet<string>(CORRUPT_BACKUP_KEY)
+    if (v) return v
+  } catch { /* fall through */ }
+  try { return localStorage.getItem(CORRUPT_BACKUP_KEY) } catch { return null }
 }
 
 export function exportSave(state: GameState): string {
