@@ -25,8 +25,10 @@ import {
 } from './formulas'
 import type { StageDefinition, StageState, GeneratorDef, EnchantState } from '../data/types'
 
-/** Read-only multiplier factors that feed the per-generator production switch. */
-interface ProdFactors {
+/** Read-only multiplier factors that feed the per-generator production switch.
+ *  Exported so the UI can render starvation/throttle previews from the SAME math the
+ *  sim uses (via factorsPreview) instead of re-deriving the coefficients (which drifts). */
+export interface ProdFactors {
   cmPrimary: Decimal       // combined multiplier for primary output
   cmSecondary: Decimal     // combined multiplier for secondary output (Magic excludes enchants)
   familiarStarve: Decimal  // Magic: 0–1 if Familiars lack Grain/Essence upkeep
@@ -492,6 +494,24 @@ export class StageEconomy {
     // Time reports net Paradox/s (gen − vent) as its secondary rate, regardless of generators owned.
     if (this.def.id === 'time') secondary = D(f.paradoxNet)
     return { primary, secondary, labor }
+  }
+
+  /**
+   * Read-only ProdFactors for UI previews (dt = 1). Reuses the exact same _baseMults +
+   * _computeFactors path as tick()/rates(), so the starvation/throttle/demand numbers the
+   * UI shows can never drift from what the sim actually applies. Pure — safe per frame.
+   */
+  factorsPreview(
+    state: StageState,
+    globalMult: Decimal,
+    extraMult: Decimal = ONE,
+    stages?: Record<string, StageState>,
+    activeEnchants?: EnchantState[],
+    skills?: Record<string, number>,
+    spaceBuffers?: { ore: Decimal; power: Decimal }
+  ): ProdFactors {
+    const { cmPrimary, cmSecondary } = this._baseMults(state, globalMult, extraMult, activeEnchants)
+    return this._computeFactors(state, 1, cmPrimary, cmSecondary, stages, skills, spaceBuffers)
   }
 
 

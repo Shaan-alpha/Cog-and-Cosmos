@@ -7,6 +7,7 @@
     genCost,
     canAffordGen,
     stageRates,
+    stageFactors,
     bindingInfos,
     manualGather,
     gatherPreview,
@@ -36,7 +37,7 @@
   import WarpTab from './WarpTab.svelte'
   import DuplicationTab from './DuplicationTab.svelte'
   import { LOCAL_SKILLS_BY_STAGE } from '../data/skills/local'
-  import { D, ZERO, ONE } from '../systems/Decimal'
+  import { ONE } from '../systems/Decimal'
   import { BALANCE, nextMilestoneInfo } from '../systems/formulas'
 
   interface Props { stageId: string }
@@ -117,74 +118,32 @@
     if (stageId) activeTab = 'generators'
   })
 
-  // ── Space starvation details ──
+  // ── Stage starvation / throttle previews ──
+  // All economy math (demands, starvation ratios, paradox throttle) comes from the SAME
+  // shared StageEconomy path the sim uses (stageFactors → factorsPreview), so these previews
+  // can never drift from real production. The UI does only trivial display formatting.
   const buffers = $derived(spaceBuffers())
   const isBufferTanksOwned = $derived(skillLevel('space:buffer_tanks') >= 1)
-  const isSelfMiningDronesOwned = $derived(skillLevel('space:self_mining_drones') >= 1)
-  const isPowerRecaptureOwned = $derived(skillLevel('space:power_recapture') >= 1)
-  const oreThroughputLvl = $derived(skillLevel('space:ore_throughput'))
+  const factors = $derived(stageFactors(stageId))
 
   const spaceStarvation = $derived.by(() => {
-    if (stageId !== 'space') return null
-    const sState = stageState
-    const smelter = sState.generators.smelter?.count ?? 0
-    const refinery = sState.generators.refinery?.count ?? 0
-    const dyson = sState.generators.dysonframe?.count ?? 0
-    const probe = sState.generators.probe?.count ?? 0
-    const colony = sState.generators.colony?.count ?? 0
-    const forge = sState.generators.starforge?.count ?? 0
-    const gate = sState.generators.warpgate?.count ?? 0
-
-    let demandOre = 5 * smelter + 12 * refinery + 40 * dyson
-    let demandPower = 2 * smelter + 5 * refinery + 30 * dyson
-
-    if (isSelfMiningDronesOwned) demandOre *= 0.92
-    if (isPowerRecaptureOwned) demandPower *= 0.75
-    if (oreThroughputLvl > 0) demandOre *= (1 - 0.10 * oreThroughputLvl)
-
-    const stateOre = isBufferTanksOwned ? buffers.ore : (getStage('mine')?.primaryAmount ?? ZERO)
-    const statePower = isBufferTanksOwned ? buffers.power : (getStage('factory')?.secondaryAmount ?? ZERO)
-
-    const oreRatio = demandOre > 0 ? stateOre.toNumber() / demandOre : 1
-    const powerRatio = demandPower > 0 ? statePower.toNumber() / demandPower : 1
-    const alloyStarve = Math.min(1, Math.max(0, Math.min(oreRatio, powerRatio)))
-
-    const demandAlloy = 3 * probe + 10 * colony + 90 * forge + 200 * gate
-    const stardustStarve = demandAlloy > 0 ? Math.min(1, Math.max(0, sState.secondaryAmount.toNumber() / demandAlloy)) : 1
-
+    if (stageId !== 'space' || !factors) return null
     return {
-      demandOre,
-      demandPower,
-      demandAlloy,
-      oreRatio: Math.min(1, oreRatio),
-      powerRatio: Math.min(1, powerRatio),
-      alloyStarve,
-      stardustStarve
+      demandOre: factors.oreDemand,
+      demandPower: factors.powerDemand,
+      demandAlloy: factors.alloyDemand,
+      alloyStarve: factors.alloyStarve.toNumber(),
+      stardustStarve: factors.stardustStarve.toNumber(),
     }
   })
 
-  const familiarStarve = $derived.by(() => {
-    if (stageId !== 'magic') return ONE
-    const magic = stageState
-    const familiarCount = magic.generators.familiar?.count ?? 0
-    if (familiarCount === 0) return ONE
-    const grainDemand = familiarCount * 0.05
-    const essenceDemand = familiarCount * 0.10
-
-    const farmGrain = getStage('farm')?.primaryAmount ?? ZERO
-    const magicEssence = magic.secondaryAmount ?? ZERO
-
-    const grainRatio = grainDemand > 0 ? farmGrain.div(D(grainDemand)).min(ONE) : ONE
-    const essenceRatio = essenceDemand > 0 ? magicEssence.div(D(essenceDemand)).min(ONE) : ONE
-    return grainRatio.min(essenceRatio).max(ZERO)
-  })
+  const familiarStarve = $derived(stageId === 'magic' && factors ? factors.familiarStarve : ONE)
 
   // ── Time Paradox banner state (the Warp tab itself lives in WarpTab.svelte) ──
   const warp = $derived(warpState())
   const chargeCap = $derived(warpChargeCap())
   const paradox = $derived(stageState.secondaryAmount)
-  // Throttle preview: 1 / (1 + sqrt(paradox/200)).
-  const throttle = $derived(1 / (1 + Math.sqrt(Math.max(0, paradox.toNumber()) / 200)))
+  const throttle = $derived(stageId === 'time' && factors ? factors.timeThrottle.toNumber() : 1)
 
   // ── Local Skills tree ──
   function handleBuyLocalSkill(nodeId: string) {

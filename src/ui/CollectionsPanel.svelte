@@ -11,7 +11,7 @@
     rare: 'drops on transcendence', legendary: 'drops on reality reset',
   }
   function tierRelics(r: RelicRarity) { return RELICS.filter(x => x.rarity === r) }
-  function setFor(r: RelicRarity) { return RELIC_SETS.find(s => s.rarity === r)! }
+  function setFor(r: RelicRarity) { return RELIC_SETS.find(s => s.rarity === r) }
   function setComplete(r: RelicRarity) { return tierRelics(r).every(x => owned.has(x.id)) }
   function ownedCount(r: RelicRarity) { return tierRelics(r).filter(x => owned.has(x.id)).length }
 </script>
@@ -36,7 +36,9 @@
       <div class="tier-head">
         <h3 class="tier-title r-{tier}">{TIER_LABEL[tier]}</h3>
         <span class="tier-count tnum">{ownedCount(tier)} / {relics.length}</span>
-        <span class="tier-set {complete ? 'done' : ''}">Set: +{set.completionPct}% {set.effect === 'engine' ? 'mint' : 'production'} {complete ? '✓' : ''}</span>
+        {#if set}
+          <span class="tier-set {complete ? 'done' : ''}">Set: +{set.completionPct}% {set.effect === 'engine' ? 'mint' : 'production'} {complete ? '✓' : ''}</span>
+        {/if}
       </div>
       <div class="relic-grid">
         {#each relics as r}

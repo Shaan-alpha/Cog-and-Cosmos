@@ -919,6 +919,15 @@ export function stageRates(stageId: string): { primary: Dec; secondary: Dec; lab
 }
 
 
+/** Read-only starvation/throttle/demand factors for a stage's UI preview, computed via the
+ *  SAME economy path as the sim (so previews never drift from real production). Null if absent. */
+export function stageFactors(stageId: string) {
+  const economy = STAGE_ECONOMIES[stageId]
+  const st = gs.stages[stageId]
+  if (!economy || !st) return null
+  return economy.factorsPreview(st, effGlobalMult(), bindingMultFor(stageId), gs.stages, gs.activeEnchants, gs.skills, gs.spaceBuffers)
+}
+
 /** How much a single manual gather yields right now: ≥1, or ~3s of current production. */
 export function gatherPreview(stageId: string): Dec {
   return ONE.max(stageRates(stageId).primary.mul(3))

@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Hardened — deep-audit robustness pass (no behaviour change)
+- **Single source of truth for starvation/throttle previews.** `StagePanel` no longer re-derives
+  Space input-chain demands, Magic familiar upkeep, or the Time paradox throttle in the UI (which
+  duplicated `StageEconomy`/`formulas` coefficients and could silently drift). It now reads the SAME
+  factors the sim applies via a new read-only `StageEconomy.factorsPreview()` → `stageFactors(stageId)`
+  store accessor. Removes ~40 lines of duplicated economy math from the component.
+- **`CollectionsPanel` no longer asserts a set always exists.** `setFor()` returns the rarity set or
+  `undefined` and the set badge is `{#if set}`-guarded, instead of a non-null `!` that would throw if a
+  rarity ever shipped without a set.
 - **UI error boundary.** Wrapped the live game (`GameLayout`) in a Svelte `<svelte:boundary>`: a
   render-time throw in any panel now shows a small inline "reload the view" fallback instead of
   white-screening the whole app (a second "must refresh" vector). The sim loop runs independently and
